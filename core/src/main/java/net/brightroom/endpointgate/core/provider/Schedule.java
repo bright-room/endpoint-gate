@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 public record Schedule(
     @Nullable LocalDateTime start, @Nullable LocalDateTime end, @Nullable ZoneId timezone) {
 
+  /** Validates that start is not after end. */
   public Schedule {
     if (start != null && end != null && start.isAfter(end)) {
       throw new IllegalArgumentException(

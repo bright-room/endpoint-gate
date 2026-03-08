@@ -48,32 +48,56 @@ public final class ConditionVariables {
     this.remoteAddress = remoteAddress;
   }
 
-  /** Returns the request headers as a case-insensitive map. */
+  /**
+   * Returns the request headers as a case-insensitive map.
+   *
+   * @return unmodifiable map of header names to values
+   */
   public Map<String, String> headers() {
     return headers;
   }
 
-  /** Returns the query parameters. */
+  /**
+   * Returns the query parameters.
+   *
+   * @return unmodifiable map of parameter names to values
+   */
   public Map<String, String> params() {
     return params;
   }
 
-  /** Returns the cookies. */
+  /**
+   * Returns the cookies.
+   *
+   * @return unmodifiable map of cookie names to values
+   */
   public Map<String, String> cookies() {
     return cookies;
   }
 
-  /** Returns the request path. */
+  /**
+   * Returns the request path.
+   *
+   * @return the request path
+   */
   public String path() {
     return path;
   }
 
-  /** Returns the HTTP method. */
+  /**
+   * Returns the HTTP method.
+   *
+   * @return the HTTP method
+   */
   public String method() {
     return method;
   }
 
-  /** Returns the client IP address. */
+  /**
+   * Returns the client IP address.
+   *
+   * @return the client IP address
+   */
   public String remoteAddress() {
     return remoteAddress;
   }

@@ -10,7 +10,12 @@ public sealed interface AccessDecision {
   /** Indicates that access is allowed. */
   record Allowed() implements AccessDecision {}
 
-  /** Indicates that access is denied, with the gate identifier and reason. */
+  /**
+   * Indicates that access is denied, with the gate identifier and reason.
+   *
+   * @param gateId the gate identifier that was denied
+   * @param reason the reason for denial
+   */
   record Denied(String gateId, DeniedReason reason) implements AccessDecision {}
 
   /** Reason for denying access in the evaluation pipeline. */
