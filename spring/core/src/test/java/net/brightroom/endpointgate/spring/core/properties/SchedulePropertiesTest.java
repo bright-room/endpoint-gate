@@ -1,4 +1,4 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;

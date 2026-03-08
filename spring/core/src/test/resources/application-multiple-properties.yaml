@@ -1,0 +1,9 @@
+endpoint-gate:
+  gates:
+    g1:
+      enabled: true
+    g2:
+      enabled: false
+  default-enabled: true
+  response:
+    type: PLAIN_TEXT
