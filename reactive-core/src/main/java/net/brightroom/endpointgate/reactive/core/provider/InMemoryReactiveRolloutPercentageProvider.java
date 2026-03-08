@@ -23,7 +23,7 @@ public class InMemoryReactiveRolloutPercentageProvider
   @Override
   public Mono<Integer> getRolloutPercentage(String gateId) {
     Integer percentage = rolloutPercentages.get(gateId);
-    return percentage != null ? Mono.just(percentage) : Mono.empty();
+    return Mono.justOrEmpty(percentage);
   }
 
   /**

@@ -38,13 +38,19 @@ public final class ServerHttpConditionVariables {
               if (!cookieList.isEmpty()) cookies.put(name, cookieList.getFirst().getValue());
             });
     InetSocketAddress remoteAddr = request.getRemoteAddress();
+    String remoteAddress;
+    if (remoteAddr != null) {
+      remoteAddress = remoteAddr.getHostString();
+    } else {
+      remoteAddress = "";
+    }
     return new ConditionVariablesBuilder()
         .headers(headers)
         .params(params)
         .cookies(cookies)
         .path(request.getPath().value())
         .method(request.getMethod().name())
-        .remoteAddress(remoteAddr != null ? remoteAddr.getHostString() : "")
+        .remoteAddress(remoteAddress)
         .build();
   }
 }

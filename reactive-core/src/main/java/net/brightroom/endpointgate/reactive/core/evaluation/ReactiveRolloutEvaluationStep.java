@@ -33,9 +33,11 @@ public class ReactiveRolloutEvaluationStep implements ReactiveEvaluationStep {
     return rolloutStrategy
         .isInRollout(context.gateId(), gateContext, context.rolloutPercentage())
         .map(
-            inRollout ->
-                inRollout
-                    ? AccessDecision.allowed()
-                    : AccessDecision.denied(context.gateId(), DeniedReason.ROLLOUT_EXCLUDED));
+            inRollout -> {
+              if (inRollout) {
+                return AccessDecision.allowed();
+              }
+              return AccessDecision.denied(context.gateId(), DeniedReason.ROLLOUT_EXCLUDED);
+            });
   }
 }
