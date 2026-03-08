@@ -1,0 +1,26 @@
+name: on-deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Publish to maven central with Gradle
+        uses: ./.github/actions/gradle-action
+        env:
+          SONATYPE_CENTRAL_USERNAME: ${{ secrets.SONATYPE_CENTRAL_USERNAME }}
+          SONATYPE_CENTRAL_PASSWORD: ${{ secrets.SONATYPE_CENTRAL_PASSWORD }}
+          PGP_SIGNING_KEY: ${{ secrets.PGP_SIGNING_KEY }}
+          PGP_SIGNING_KEY_PASSPHRASE: ${{ secrets.PGP_SIGNING_KEY_PASSPHRASE }}
+        with:
+          command: sonatypeCentralUpload -PreleaseVersion=${{ github.event.release.tag_name }} --no-configuration-cache
