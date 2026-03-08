@@ -33,5 +33,5 @@ public class ConditionProperties {
     this.failOnError = failOnError;
   }
 
-  ConditionProperties() {}
+  public ConditionProperties() {}
 }

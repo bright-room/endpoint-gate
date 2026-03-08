@@ -1,0 +1,59 @@
+{
+  "properties": [
+    {
+      "name": "endpoint-gate.gates",
+      "type": "java.util.Map<java.lang.String,net.brightroom.endpointgate.core.properties.GateProperties>",
+      "description": "Per-gate configuration including enabled state and rollout percentage."
+    },
+    {
+      "name": "endpoint-gate.gates.[*].enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether this endpoint gate is enabled.",
+      "defaultValue": true
+    },
+    {
+      "name": "endpoint-gate.gates.[*].rollout",
+      "type": "java.lang.Integer",
+      "description": "Rollout percentage for this endpoint gate (0-100). 100 means fully rolled out to all requests; 0 means no requests even if enabled.",
+      "defaultValue": 100
+    },
+    {
+      "name": "endpoint-gate.gates.[*].condition",
+      "type": "java.lang.String",
+      "description": "SpEL expression evaluated against the request context to conditionally enable this gate. Available variables: headers, params, cookies, path, method, remoteAddress. If empty, no condition is applied."
+    },
+    {
+      "name": "endpoint-gate.response.type",
+      "type": "net.brightroom.endpointgate.core.properties.ResponseType",
+      "description": "The type of response to return."
+    },
+    {
+      "name": "endpoint-gate.default-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether undefined endpoint gates are enabled by default. Defaults to false (fail-closed): undefined gates block access. Set to true for fail-open behavior: undefined gates allow access.",
+      "defaultValue": false
+    },
+    {
+      "name": "endpoint-gate.condition.fail-on-error",
+      "type": "java.lang.Boolean",
+      "description": "Whether condition evaluation errors should cause access denial. Defaults to true (fail-closed): evaluation errors block access. Set to false for fail-open behavior: evaluation errors allow access.",
+      "defaultValue": true
+    },
+    {
+      "name": "endpoint-gate.gates.[*].schedule.start",
+      "type": "java.time.LocalDateTime",
+      "description": "The start date-time of the schedule window. The gate is treated as disabled before this time. If omitted, the gate has no start restriction."
+    },
+    {
+      "name": "endpoint-gate.gates.[*].schedule.end",
+      "type": "java.time.LocalDateTime",
+      "description": "The end date-time of the schedule window. The gate is treated as disabled after this time. If omitted, the gate has no end restriction."
+    },
+    {
+      "name": "endpoint-gate.gates.[*].schedule.timezone",
+      "type": "java.time.ZoneId",
+      "description": "The timezone used to evaluate start and end times. If omitted, the system default timezone is used.",
+      "defaultValue": "system default"
+    }
+  ]
+}

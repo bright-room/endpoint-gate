@@ -43,7 +43,7 @@ public class ScheduleProperties {
    *
    * @return a new {@link Schedule} with the same start, end, and timezone values
    */
-  Schedule toSchedule() {
+  public Schedule toSchedule() {
     return new Schedule(start, end, timezone);
   }
 

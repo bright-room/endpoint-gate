@@ -24,5 +24,5 @@ public class ResponseProperties {
     this.type = type;
   }
 
-  ResponseProperties() {}
+  public ResponseProperties() {}
 }
