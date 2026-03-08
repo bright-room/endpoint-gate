@@ -112,6 +112,10 @@ Built-in `AccessDeniedInterceptResolution` implementations (selected by `endpoin
 | `endpoint-gate.response.type` | `JSON` | Response format: `JSON`, `PLAIN_TEXT`, `HTML` |
 | `endpoint-gate.condition.fail-on-error` | `true` | SpEL error handling (fail-closed / fail-open) |
 
+## Coding Guidelines
+
+コード実装時は `.claude/guidelines/coding.md` を参照し、ガイドラインに準拠したコードを書くこと。
+
 ## Contributing
 
 PRs target `main`. PR titles should be prefixed with `Close #<IssueNumber>` when resolving an issue. See `.github/CONTRIBUTING.md` for the full workflow.
