@@ -18,7 +18,10 @@ public class MutableInMemoryRolloutPercentageProvider implements MutableRolloutP
   @Override
   public OptionalInt getRolloutPercentage(String gateId) {
     Integer percentage = rolloutPercentages.get(gateId);
-    return percentage != null ? OptionalInt.of(percentage) : OptionalInt.empty();
+    if (percentage != null) {
+      return OptionalInt.of(percentage);
+    }
+    return OptionalInt.empty();
   }
 
   /** {@inheritDoc} */

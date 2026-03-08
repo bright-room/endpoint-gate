@@ -22,7 +22,7 @@ public class InMemoryReactiveConditionProvider implements ReactiveConditionProvi
   @Override
   public Mono<String> getCondition(String gateId) {
     String condition = conditions.get(gateId);
-    return condition != null ? Mono.just(condition) : Mono.empty();
+    return Mono.justOrEmpty(condition);
   }
 
   /**

@@ -87,7 +87,11 @@ public class GateProperties {
 
   // for property binding
   void setCondition(String condition) {
-    this.condition = condition != null ? condition : "";
+    if (condition != null) {
+      this.condition = condition;
+    } else {
+      this.condition = "";
+    }
   }
 
   // for property binding
