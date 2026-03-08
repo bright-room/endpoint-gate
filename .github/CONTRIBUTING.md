@@ -35,7 +35,7 @@ Before contributing to this project, please discuss the changes you wish to make
 - Once the code owner completes the review and approves the PR, it will be merged.
 
 ## 📝 Notes
-- Please follow the [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) and engage in constructive discussions.
+- Please follow the [CODE_OF_CONDUCT.md](./.github/CODE_OF_CONDUCT.md) and engage in constructive discussions.
 - If your contribution requires documentation updates, submit a PR that includes both code and documentation changes.
 - Even small contributions are welcome—don't hesitate to contribute!
 
