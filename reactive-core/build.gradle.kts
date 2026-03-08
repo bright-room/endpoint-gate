@@ -9,4 +9,6 @@ dependencies {
     implementation(platform(libs.reactor.bom))
     implementation(libs.reactor.core)
     testImplementation(libs.reactor.test)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit.jupiter)
 }
