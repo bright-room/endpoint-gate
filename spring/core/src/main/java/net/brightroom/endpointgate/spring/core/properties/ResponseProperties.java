@@ -1,4 +1,6 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
+
+import net.brightroom.endpointgate.core.properties.ResponseType;
 
 /**
  * Properties related to the response configuration.
@@ -24,5 +26,5 @@ public class ResponseProperties {
     this.type = type;
   }
 
-  public ResponseProperties() {}
+  ResponseProperties() {}
 }

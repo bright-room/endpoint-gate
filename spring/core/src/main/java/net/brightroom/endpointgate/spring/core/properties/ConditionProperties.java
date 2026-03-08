@@ -1,4 +1,4 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
 
 /**
  * Properties for endpoint gate condition evaluation behavior.
@@ -33,5 +33,5 @@ public class ConditionProperties {
     this.failOnError = failOnError;
   }
 
-  public ConditionProperties() {}
+  ConditionProperties() {}
 }
