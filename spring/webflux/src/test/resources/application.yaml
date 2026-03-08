@@ -1,0 +1,8 @@
+endpoint-gate:
+  gates:
+    experimental-stage-endpoint:
+      enabled: true
+    development-stage-endpoint:
+      enabled: false
+  response:
+    type: json
