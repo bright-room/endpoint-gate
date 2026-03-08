@@ -70,7 +70,9 @@ tasks {
         // preventing partial uploads when a sibling module's javadoc fails.
         rootProject.subprojects.forEach { sub ->
             if (sub != project) {
-                dependsOn("${sub.path}:javadocJar")
+                sub.plugins.withId("java") {
+                    dependsOn("${sub.path}:javadocJar")
+                }
             }
         }
 
