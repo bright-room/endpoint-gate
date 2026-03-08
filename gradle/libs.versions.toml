@@ -1,6 +1,7 @@
 [versions]
 java = "25"
 junit = "5.12.2"
+mockito = "5.18.0"
 reactor = "2025.0.3"
 
 [libraries]
@@ -32,6 +33,9 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 assertj-core = { module = "org.assertj:assertj-core", version = { strictly = "3.27.3" } }
+jspecify = { module = "org.jspecify:jspecify", version = { strictly = "1.0.0" } }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 jsoup = { module = "org.jsoup:jsoup", version = { strictly = "1.22.1" } }
 
 #########################################
