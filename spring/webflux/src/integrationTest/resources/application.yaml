@@ -1,0 +1,17 @@
+endpoint-gate:
+  gates:
+    experimental-stage-endpoint:
+      enabled: true
+    development-stage-endpoint:
+      enabled: false
+    enable-class-level-feature:
+      enabled: true
+    disable-class-level-feature:
+      enabled: false
+    conditional-feature:
+      enabled: true
+    remote-address-condition-feature:
+      enabled: true
+      condition: "remoteAddress == '127.0.0.1'"
+  response:
+    type: json
