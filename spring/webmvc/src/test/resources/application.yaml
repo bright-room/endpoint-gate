@@ -1,0 +1,12 @@
+endpoint-gate:
+  gates:
+    experimental-stage-endpoint:
+      enabled: true
+    development-stage-endpoint:
+      enabled: false
+    enable-class-level-feature:
+      enabled: true
+    disable-class-level-feature:
+      enabled: false
+  response:
+    type: json
