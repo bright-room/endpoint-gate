@@ -1,0 +1,2 @@
+net.brightroom.endpointgate.spring.webmvc.autoconfigure.EndpointGateMvcAutoConfiguration
+net.brightroom.endpointgate.spring.webmvc.autoconfigure.EndpointGateMvcInterceptorRegistrationAutoConfiguration
