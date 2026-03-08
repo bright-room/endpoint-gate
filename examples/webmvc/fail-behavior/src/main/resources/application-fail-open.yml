@@ -1,0 +1,5 @@
+endpoint-gate:
+  gates:
+    known-disabled:
+      enabled: false
+  default-enabled: true

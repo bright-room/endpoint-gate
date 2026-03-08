@@ -1,16 +1,6 @@
 plugins {
-    id("spring-boot-starter")
+    id("example-base")
     id("spotless-java")
-}
-
-tasks {
-    bootJar {
-        enabled = true
-    }
-
-    jar {
-        enabled = false
-    }
 }
 
 dependencies {

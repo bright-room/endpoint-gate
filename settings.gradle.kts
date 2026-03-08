@@ -19,14 +19,15 @@ includeBuild("gradle-scripts")
 // ###########################################
 // # Library modules
 // ###########################################
-include("core")
-include("reactive-core")
-include("spring:core")
-include("spring:webmvc")
-include("spring:webflux")
-include("spring:actuator")
+include(
+    "core",
+    "reactive-core",
+    "spring:core",
+    "spring:webmvc",
+    "spring:webflux",
+    "spring:actuator",
+)
 
-// ディレクトリパス → artifactId のマッピング
 project(":spring:core").name = "spring-core"
 project(":spring:webmvc").name = "spring-webmvc"
 project(":spring:webflux").name = "spring-webflux"
@@ -35,6 +36,16 @@ project(":spring:actuator").name = "spring-actuator"
 // ###########################################
 // # Example modules
 // ###########################################
-include("examples:webmvc")
-
-project(":examples:webmvc").name = "examples-webmvc"
+include(
+    "examples:webmvc:basic-usage",
+    "examples:webmvc:fail-behavior",
+    "examples:webmvc:custom-provider-database",
+    "examples:webmvc:custom-provider-simple",
+    "examples:webmvc:error-handling",
+    "examples:webmvc:rollout",
+    "examples:webmvc:functional-endpoint",
+    "examples:webmvc:actuator-endpoint",
+    "examples:webmvc:health-indicator",
+    "examples:webmvc:custom-rollout-strategy",
+    "examples:webmvc:event-listener",
+)
