@@ -1,0 +1,4 @@
+external-endpoint-gates:
+  gates:
+    cloud-feature: true
+    beta-feature: false

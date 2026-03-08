@@ -1,0 +1,12 @@
+endpoint-gate:
+  default-enabled: true
+  gates:
+    annotation-rollout:
+      enabled: true
+      rollout: 50
+    config-rollout:
+      enabled: true
+      rollout: 30
+    sticky-rollout:
+      enabled: true
+      rollout: 50

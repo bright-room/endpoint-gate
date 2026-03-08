@@ -1,0 +1,18 @@
+endpoint-gate:
+  gates:
+    greeting:
+      enabled: true
+    new-search:
+      enabled: true
+    new-export:
+      enabled: false
+    legacy-api:
+      enabled: false
+    special-endpoint:
+      enabled: true
+    json-demo:
+      enabled: false
+    plain-text-demo:
+      enabled: false
+    html-demo:
+      enabled: false
