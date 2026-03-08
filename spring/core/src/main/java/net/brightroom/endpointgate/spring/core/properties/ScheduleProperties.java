@@ -1,4 +1,4 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;

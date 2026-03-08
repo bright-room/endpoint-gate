@@ -1,4 +1,4 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
 
 /**
  * Represents the type of response to be returned by the system.

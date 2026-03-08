@@ -1,4 +1,4 @@
-package net.brightroom.endpointgate.core.properties;
+package net.brightroom.endpointgate.spring.core.properties;
 
 /**
  * Configuration for a single endpoint gate, including its enabled status, rollout percentage,

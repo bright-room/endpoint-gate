@@ -2,7 +2,6 @@ package net.brightroom.endpointgate.spring.core.properties;
 
 import java.util.HashMap;
 import java.util.Map;
-import net.brightroom.endpointgate.core.properties.GateProperties;
 import net.brightroom.endpointgate.core.provider.Schedule;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -88,12 +87,7 @@ public class EndpointGateProperties {
     gates.forEach(
         (id, config) -> {
           if (config.schedule() != null) {
-            result.put(
-                id,
-                new Schedule(
-                    config.schedule().start(),
-                    config.schedule().end(),
-                    config.schedule().timezone()));
+            result.put(id, config.schedule().toSchedule());
           }
         });
     return Map.copyOf(result);

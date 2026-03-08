@@ -2,7 +2,7 @@
   "properties": [
     {
       "name": "endpoint-gate.gates",
-      "type": "java.util.Map<java.lang.String,net.brightroom.endpointgate.core.properties.GateProperties>",
+      "type": "java.util.Map<java.lang.String,net.brightroom.endpointgate.spring.core.properties.GateProperties>",
       "description": "Per-gate configuration including enabled state and rollout percentage."
     },
     {
@@ -24,7 +24,7 @@
     },
     {
       "name": "endpoint-gate.response.type",
-      "type": "net.brightroom.endpointgate.core.properties.ResponseType",
+      "type": "net.brightroom.endpointgate.spring.core.properties.ResponseType",
       "description": "The type of response to return."
     },
     {
