@@ -52,7 +52,7 @@ class ReactiveScheduleEvaluationStepTest {
 
   @Test
   void evaluate_returnsDenied_whenScheduleIsInactive_endInPast() {
-    // end in past → inactive
+    // end in past, no start → inactive; retryAfter should be null
     Schedule inactive = new Schedule(null, LocalDateTime.of(2025, 1, 1, 0, 0), ZoneId.of("UTC"));
     when(scheduleProvider.getSchedule("my-gate")).thenReturn(Mono.just(inactive));
     StepVerifier.create(step.evaluate(CTX))
@@ -60,20 +60,24 @@ class ReactiveScheduleEvaluationStepTest {
             d ->
                 d instanceof AccessDecision.Denied denied
                     && denied.gateId().equals("my-gate")
-                    && denied.reason() == DeniedReason.SCHEDULE_INACTIVE)
+                    && denied.reason() == DeniedReason.SCHEDULE_INACTIVE
+                    && denied.retryAfter() == null)
         .verifyComplete();
   }
 
   @Test
   void evaluate_returnsDenied_whenScheduleIsInactive_startInFuture() {
-    // start in future → inactive
-    Schedule inactive = new Schedule(LocalDateTime.of(2025, 12, 1, 0, 0), null, ZoneId.of("UTC"));
+    // start in future → inactive; retryAfter should be the start instant
+    LocalDateTime futureStart = LocalDateTime.of(2025, 12, 1, 0, 0);
+    Schedule inactive = new Schedule(futureStart, null, ZoneId.of("UTC"));
     when(scheduleProvider.getSchedule("my-gate")).thenReturn(Mono.just(inactive));
+    Instant expectedRetryAfter = futureStart.atZone(ZoneId.of("UTC")).toInstant();
     StepVerifier.create(step.evaluate(CTX))
         .expectNextMatches(
             d ->
                 d instanceof AccessDecision.Denied denied
-                    && denied.reason() == DeniedReason.SCHEDULE_INACTIVE)
+                    && denied.reason() == DeniedReason.SCHEDULE_INACTIVE
+                    && expectedRetryAfter.equals(denied.retryAfter()))
         .verifyComplete();
   }
 }

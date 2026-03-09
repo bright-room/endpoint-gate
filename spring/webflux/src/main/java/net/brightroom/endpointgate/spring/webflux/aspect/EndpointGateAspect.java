@@ -4,7 +4,6 @@ import java.lang.reflect.Method;
 import net.brightroom.endpointgate.core.annotation.EndpointGate;
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
-import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
 import net.brightroom.endpointgate.reactive.core.evaluation.ReactiveEndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
@@ -96,7 +95,7 @@ public class EndpointGateAspect {
       return decisionMono.flatMap(
           decision -> {
             if (decision instanceof AccessDecision.Denied denied) {
-              return Mono.error(new EndpointGateAccessDeniedException(denied.gateId()));
+              return Mono.error(denied.toException());
             }
             return proceedAsMono(joinPoint);
           });
@@ -106,7 +105,7 @@ public class EndpointGateAspect {
       return decisionMono.flatMapMany(
           decision -> {
             if (decision instanceof AccessDecision.Denied denied) {
-              return Flux.error(new EndpointGateAccessDeniedException(denied.gateId()));
+              return Flux.error(denied.toException());
             }
             return proceedAsFlux(joinPoint);
           });

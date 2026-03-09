@@ -45,7 +45,7 @@ class ScheduleEvaluationStepTest {
 
   @Test
   void evaluate_returnsDenied_whenScheduleIsInactive_endInPast() {
-    // end in past → inactive
+    // end in past, no start → inactive; retryAfter should be null
     Schedule inactive = new Schedule(null, LocalDateTime.of(2025, 1, 1, 0, 0), ZoneId.of("UTC"));
     when(scheduleProvider.getSchedule("my-gate")).thenReturn(Optional.of(inactive));
 
@@ -54,17 +54,34 @@ class ScheduleEvaluationStepTest {
     AccessDecision.Denied denied = (AccessDecision.Denied) result.get();
     assertThat(denied.gateId()).isEqualTo("my-gate");
     assertThat(denied.reason()).isEqualTo(DeniedReason.SCHEDULE_INACTIVE);
+    assertThat(denied.retryAfter()).isNull();
   }
 
   @Test
   void evaluate_returnsDenied_whenScheduleIsInactive_startInFuture() {
-    // start in future → inactive
-    Schedule inactive = new Schedule(LocalDateTime.of(2025, 12, 1, 0, 0), null, ZoneId.of("UTC"));
+    // start in future → inactive; retryAfter should be the start instant
+    LocalDateTime futureStart = LocalDateTime.of(2025, 12, 1, 0, 0);
+    Schedule inactive = new Schedule(futureStart, null, ZoneId.of("UTC"));
     when(scheduleProvider.getSchedule("my-gate")).thenReturn(Optional.of(inactive));
 
     Optional<AccessDecision> result = step.evaluate(CTX);
     assertThat(result).isPresent();
-    assertThat(((AccessDecision.Denied) result.get()).reason())
-        .isEqualTo(DeniedReason.SCHEDULE_INACTIVE);
+    AccessDecision.Denied denied = (AccessDecision.Denied) result.get();
+    assertThat(denied.reason()).isEqualTo(DeniedReason.SCHEDULE_INACTIVE);
+    assertThat(denied.retryAfter()).isEqualTo(futureStart.atZone(ZoneId.of("UTC")).toInstant());
+  }
+
+  @Test
+  void evaluate_returnsDenied_withTimezoneAwareRetryAfter_whenTimezoneConfigured() {
+    // start in future with Tokyo timezone
+    LocalDateTime futureStart = LocalDateTime.of(2025, 12, 1, 9, 0);
+    ZoneId tokyo = ZoneId.of("Asia/Tokyo");
+    Schedule inactive = new Schedule(futureStart, null, tokyo);
+    when(scheduleProvider.getSchedule("my-gate")).thenReturn(Optional.of(inactive));
+
+    Optional<AccessDecision> result = step.evaluate(CTX);
+    assertThat(result).isPresent();
+    AccessDecision.Denied denied = (AccessDecision.Denied) result.get();
+    assertThat(denied.retryAfter()).isEqualTo(futureStart.atZone(tokyo).toInstant());
   }
 }

@@ -24,4 +24,10 @@ public class EndpointGateScheduleController {
   public String timezoneSchedule() {
     return "Allowed";
   }
+
+  @GetMapping("/schedule/end-only-inactive")
+  @EndpointGate("end-only-inactive-scheduled-gate")
+  public String endOnlyInactiveSchedule() {
+    return "Allowed";
+  }
 }
