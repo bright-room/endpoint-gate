@@ -1,8 +1,10 @@
 package net.brightroom.endpointgate.core.provider;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,5 +57,36 @@ public record Schedule(
     if (start != null && localNow.isBefore(start)) return false;
     if (end != null && localNow.isAfter(end)) return false;
     return true;
+  }
+
+  /**
+   * Returns the retry-after {@link Instant} for this schedule, or {@code null} if not applicable.
+   *
+   * <p>Returns the {@link #start()} instant if {@code start} is non-null and in the future relative
+   * to the given {@code clock}. Returns {@code null} if {@code start} is null, or if {@code start}
+   * is already in the past (to avoid sending a stale retry-after hint to clients).
+   *
+   * @param clock the clock used to determine the current time
+   * @return the retry-after instant, or {@code null}
+   */
+  public @Nullable Instant retryAfterInstant(Clock clock) {
+    if (start == null) {
+      return null;
+    }
+    ZoneId zone = resolveZone();
+    ZonedDateTime zonedStart = start.atZone(zone);
+    Instant startInstant = zonedStart.toInstant();
+    Instant now = clock.instant();
+    if (startInstant.isBefore(now)) {
+      return null;
+    }
+    return startInstant;
+  }
+
+  private ZoneId resolveZone() {
+    if (timezone != null) {
+      return timezone;
+    }
+    return ZoneId.systemDefault();
   }
 }

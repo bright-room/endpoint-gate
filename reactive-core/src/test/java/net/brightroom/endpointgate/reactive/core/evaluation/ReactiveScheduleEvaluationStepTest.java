@@ -80,4 +80,21 @@ class ReactiveScheduleEvaluationStepTest {
                     && expectedRetryAfter.equals(denied.retryAfter()))
         .verifyComplete();
   }
+
+  @Test
+  void evaluate_returnsDenied_withTimezoneAwareRetryAfter_whenTimezoneConfigured() {
+    // start in the future with the Tokyo timezone
+    LocalDateTime futureStart = LocalDateTime.of(2025, 12, 1, 9, 0);
+    ZoneId tokyo = ZoneId.of("Asia/Tokyo");
+    Schedule inactive = new Schedule(futureStart, null, tokyo);
+    when(scheduleProvider.getSchedule("my-gate")).thenReturn(Mono.just(inactive));
+    Instant expectedRetryAfter = futureStart.atZone(tokyo).toInstant();
+    StepVerifier.create(step.evaluate(CTX))
+        .expectNextMatches(
+            d ->
+                d instanceof AccessDecision.Denied denied
+                    && denied.reason() == DeniedReason.SCHEDULE_INACTIVE
+                    && expectedRetryAfter.equals(denied.retryAfter()))
+        .verifyComplete();
+  }
 }

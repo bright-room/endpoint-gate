@@ -12,26 +12,23 @@ public final class HtmlResponseBuilder {
   /**
    * Builds an HTML body for a denied endpoint gate access.
    *
-   * <p>If the exception is a {@link EndpointGateScheduleInactiveException}, the response title
-   * indicates temporary unavailability (503). Otherwise, a 403 access denied title is used.
+   * <p>If the exception is a {@link EndpointGateScheduleInactiveException}, both the page title and
+   * heading indicate temporary unavailability (503). Otherwise, a 403 access denied title and
+   * heading are used.
    *
    * @param e the exception that triggered the denial
    * @return an HTML string
    */
   public static String buildHtml(EndpointGateAccessDeniedException e) {
-    String statusText;
-    if (e instanceof EndpointGateScheduleInactiveException) {
-      statusText = "503 - Service Temporarily Unavailable";
-    } else {
-      statusText = "403 - Access Denied";
-    }
+    String pageTitle = resolvePageTitle(e);
+    String statusText = resolveStatusText(e);
     String escapedMessage = HtmlUtils.htmlEscape(e.getMessage());
     return """
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
-          <title>Access Denied</title>
+          <title>%s</title>
         </head>
         <body>
           <h1>%s</h1>
@@ -39,6 +36,20 @@ public final class HtmlResponseBuilder {
         </body>
         </html>
         """
-        .formatted(statusText, escapedMessage);
+        .formatted(pageTitle, statusText, escapedMessage);
+  }
+
+  private static String resolvePageTitle(EndpointGateAccessDeniedException e) {
+    if (e instanceof EndpointGateScheduleInactiveException) {
+      return "Service Temporarily Unavailable";
+    }
+    return "Access Denied";
+  }
+
+  private static String resolveStatusText(EndpointGateAccessDeniedException e) {
+    if (e instanceof EndpointGateScheduleInactiveException) {
+      return "503 - Service Temporarily Unavailable";
+    }
+    return "403 - Access Denied";
   }
 }
