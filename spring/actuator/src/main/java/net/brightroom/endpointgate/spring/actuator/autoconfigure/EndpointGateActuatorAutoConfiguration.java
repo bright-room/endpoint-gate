@@ -4,22 +4,24 @@ import java.time.Clock;
 import java.util.List;
 import net.brightroom.endpointgate.core.provider.ConditionProvider;
 import net.brightroom.endpointgate.core.provider.EndpointGateProvider;
-import net.brightroom.endpointgate.core.provider.InMemoryScheduleProvider;
 import net.brightroom.endpointgate.core.provider.MutableConditionProvider;
 import net.brightroom.endpointgate.core.provider.MutableEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableInMemoryConditionProvider;
 import net.brightroom.endpointgate.core.provider.MutableInMemoryEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableInMemoryRolloutPercentageProvider;
+import net.brightroom.endpointgate.core.provider.MutableInMemoryScheduleProvider;
 import net.brightroom.endpointgate.core.provider.MutableRolloutPercentageProvider;
+import net.brightroom.endpointgate.core.provider.MutableScheduleProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
 import net.brightroom.endpointgate.core.provider.ScheduleProvider;
-import net.brightroom.endpointgate.reactive.core.provider.InMemoryReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveRolloutPercentageProvider;
+import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveRolloutPercentageProvider;
+import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
@@ -107,15 +109,16 @@ public class EndpointGateActuatorAutoConfiguration {
     }
 
     /**
-     * Registers an {@link InMemoryScheduleProvider} bean when no other {@link ScheduleProvider}
-     * bean is already present.
+     * Registers a {@link MutableInMemoryScheduleProvider} bean when no other {@link
+     * ScheduleProvider} bean is already present.
      *
-     * @return the in-memory schedule provider initialized from {@link EndpointGateProperties}
+     * @return the mutable in-memory schedule provider initialized from {@link
+     *     EndpointGateProperties}
      */
     @Bean
     @ConditionalOnMissingBean(ScheduleProvider.class)
-    InMemoryScheduleProvider scheduleProvider() {
-      return new InMemoryScheduleProvider(endpointGateProperties.schedules());
+    MutableInMemoryScheduleProvider scheduleProvider() {
+      return new MutableInMemoryScheduleProvider(endpointGateProperties.schedules());
     }
 
     /**
@@ -176,7 +179,7 @@ public class EndpointGateActuatorAutoConfiguration {
         MutableEndpointGateProvider provider,
         MutableRolloutPercentageProvider rolloutProvider,
         MutableConditionProvider conditionProvider,
-        ScheduleProvider scheduleProvider,
+        MutableScheduleProvider scheduleProvider,
         ApplicationEventPublisher eventPublisher,
         Clock clock) {
       return new EndpointGateEndpoint(
@@ -233,16 +236,16 @@ public class EndpointGateActuatorAutoConfiguration {
     }
 
     /**
-     * Registers an {@link InMemoryReactiveScheduleProvider} bean when no other {@link
+     * Registers a {@link MutableInMemoryReactiveScheduleProvider} bean when no other {@link
      * ReactiveScheduleProvider} bean is already present.
      *
-     * @return the in-memory reactive schedule provider initialized from {@link
+     * @return the mutable in-memory reactive schedule provider initialized from {@link
      *     EndpointGateProperties}
      */
     @Bean
     @ConditionalOnMissingBean(ReactiveScheduleProvider.class)
-    InMemoryReactiveScheduleProvider reactiveScheduleProvider() {
-      return new InMemoryReactiveScheduleProvider(endpointGateProperties.schedules());
+    MutableInMemoryReactiveScheduleProvider reactiveScheduleProvider() {
+      return new MutableInMemoryReactiveScheduleProvider(endpointGateProperties.schedules());
     }
 
     /**
@@ -304,7 +307,7 @@ public class EndpointGateActuatorAutoConfiguration {
         MutableReactiveEndpointGateProvider provider,
         MutableReactiveRolloutPercentageProvider rolloutProvider,
         MutableReactiveConditionProvider reactiveConditionProvider,
-        ReactiveScheduleProvider reactiveScheduleProvider,
+        MutableReactiveScheduleProvider reactiveScheduleProvider,
         ApplicationEventPublisher eventPublisher,
         Clock clock) {
       return new ReactiveEndpointGateEndpoint(

@@ -3,6 +3,7 @@ package net.brightroom.endpointgate.spring.actuator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
 import net.brightroom.endpointgate.spring.actuator.configuration.EndpointGateActuatorTestAutoConfiguration;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -393,11 +395,230 @@ class ReactiveEndpointGateEndpointIntegrationTest {
     this.eventCapture = eventCapture;
   }
 
+  @Test
+  void post_withSchedule_setsSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00", "scheduleEnd": "2026-12-31T23:59:59", "scheduleTimezone": "Asia/Tokyo"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start")
+        .isNotEmpty();
+  }
+
+  @Test
+  void post_withSchedule_thenGet_persistsSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .get()
+        .uri("/actuator/endpoint-gates")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start")
+        .isNotEmpty();
+  }
+
+  @Test
+  void post_withSchedule_thenGetWithSelector_returnsSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00", "scheduleEnd": "2026-12-31T23:59:59", "scheduleTimezone": "Asia/Tokyo"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .get()
+        .uri("/actuator/endpoint-gates/gate-a")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.schedule.start")
+        .isNotEmpty()
+        .jsonPath("$.schedule.end")
+        .isNotEmpty()
+        .jsonPath("$.schedule.timezone")
+        .isEqualTo("Asia/Tokyo")
+        .jsonPath("$.schedule.active")
+        .isBoolean();
+  }
+
+  @Test
+  void post_withSchedule_publishesScheduleChangedEvent() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    assertThat(eventCapture.scheduleChangedEvents()).hasSize(1);
+    var event = eventCapture.scheduleChangedEvents().get(0);
+    assertEquals("gate-a", event.gateId());
+    assertNotNull(event.schedule());
+  }
+
+  @Test
+  void post_withRemoveSchedule_removesExistingSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "removeSchedule": true}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start")
+        .isEmpty();
+  }
+
+  @Test
+  void post_withRemoveSchedule_publishesScheduleChangedEventWithNullSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+    eventCapture.clear();
+
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "removeSchedule": true}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    assertThat(eventCapture.scheduleChangedEvents()).hasSize(1);
+    assertNull(eventCapture.scheduleChangedEvents().get(0).schedule());
+  }
+
+  @Test
+  void post_withSchedule_replacesExistingSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2027-01-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start")
+        .value(v -> assertThat((List<Object>) v).contains("2027-01-01T00:00:00"));
+  }
+
+  @Test
+  void delete_removesSchedule() {
+    webTestClient
+        .post()
+        .uri("/actuator/endpoint-gates")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            """
+            {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+            """)
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .delete()
+        .uri("/actuator/endpoint-gates/gate-a")
+        .exchange()
+        .expectStatus()
+        .isNoContent();
+
+    webTestClient
+        .get()
+        .uri("/actuator/endpoint-gates/gate-a")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.schedule")
+        .doesNotExist();
+  }
+
   @Component
   static class EventCapture {
 
     private final List<EndpointGateChangedEvent> captured = new ArrayList<>();
     private final List<EndpointGateRemovedEvent> capturedRemoved = new ArrayList<>();
+    private final List<EndpointGateScheduleChangedEvent> capturedScheduleChanged =
+        new ArrayList<>();
 
     @EventListener
     void onEvent(EndpointGateChangedEvent event) {
@@ -409,6 +630,11 @@ class ReactiveEndpointGateEndpointIntegrationTest {
       capturedRemoved.add(event);
     }
 
+    @EventListener
+    void onEvent(EndpointGateScheduleChangedEvent event) {
+      capturedScheduleChanged.add(event);
+    }
+
     List<EndpointGateChangedEvent> events() {
       return List.copyOf(captured);
     }
@@ -417,9 +643,14 @@ class ReactiveEndpointGateEndpointIntegrationTest {
       return List.copyOf(capturedRemoved);
     }
 
+    List<EndpointGateScheduleChangedEvent> scheduleChangedEvents() {
+      return List.copyOf(capturedScheduleChanged);
+    }
+
     void clear() {
       captured.clear();
       capturedRemoved.clear();
+      capturedScheduleChanged.clear();
     }
   }
 }

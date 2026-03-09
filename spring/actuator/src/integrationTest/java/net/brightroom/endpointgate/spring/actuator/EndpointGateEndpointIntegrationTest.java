@@ -1,8 +1,10 @@
 package net.brightroom.endpointgate.spring.actuator;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,6 +17,7 @@ import java.util.List;
 import net.brightroom.endpointgate.spring.actuator.configuration.EndpointGateActuatorTestAutoConfiguration;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -290,11 +293,181 @@ class EndpointGateEndpointIntegrationTest {
     this.eventCapture = eventCapture;
   }
 
+  @Test
+  void post_withSchedule_setsSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00", "scheduleEnd": "2026-12-31T23:59:59", "scheduleTimezone": "Asia/Tokyo"}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start").isNotEmpty());
+  }
+
+  @Test
+  void post_withSchedule_thenGet_persistsSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/actuator/endpoint-gates"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start").isNotEmpty());
+  }
+
+  @Test
+  void post_withSchedule_thenGetWithSelector_returnsSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00", "scheduleEnd": "2026-12-31T23:59:59", "scheduleTimezone": "Asia/Tokyo"}
+                    """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/actuator/endpoint-gates/gate-a"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.schedule.start").isNotEmpty())
+        .andExpect(jsonPath("$.schedule.end").isNotEmpty())
+        .andExpect(jsonPath("$.schedule.timezone").value("Asia/Tokyo"))
+        .andExpect(jsonPath("$.schedule.active").isBoolean());
+  }
+
+  @Test
+  void post_withSchedule_publishesScheduleChangedEvent() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+
+    assertThat(eventCapture.scheduleChangedEvents()).hasSize(1);
+    var event = eventCapture.scheduleChangedEvents().get(0);
+    assertEquals("gate-a", event.gateId());
+    assertNotNull(event.schedule());
+  }
+
+  @Test
+  void post_withRemoveSchedule_removesExistingSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "removeSchedule": true}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.gates[?(@.gateId == 'gate-a')].schedule.start").isEmpty());
+  }
+
+  @Test
+  void post_withRemoveSchedule_publishesScheduleChangedEventWithNullSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+    eventCapture.clear();
+
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "removeSchedule": true}
+                    """))
+        .andExpect(status().isOk());
+
+    assertThat(eventCapture.scheduleChangedEvents()).hasSize(1);
+    assertNull(eventCapture.scheduleChangedEvents().get(0).schedule());
+  }
+
+  @Test
+  void post_withSchedule_replacesExistingSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2027-01-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$.gates[?(@.gateId == 'gate-a')].schedule.start", hasItem("2027-01-01T00:00:00")));
+  }
+
+  @Test
+  void delete_removesSchedule() throws Exception {
+    mockMvc
+        .perform(
+            post("/actuator/endpoint-gates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"gateId": "gate-a", "enabled": true, "scheduleStart": "2026-04-01T00:00:00"}
+                    """))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(delete("/actuator/endpoint-gates/gate-a")).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/actuator/endpoint-gates/gate-a"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.schedule").doesNotExist());
+  }
+
   @Component
   static class EventCapture {
 
     private final List<EndpointGateChangedEvent> captured = new ArrayList<>();
     private final List<EndpointGateRemovedEvent> capturedRemoved = new ArrayList<>();
+    private final List<EndpointGateScheduleChangedEvent> capturedScheduleChanged =
+        new ArrayList<>();
 
     @EventListener
     void onEvent(EndpointGateChangedEvent event) {
@@ -306,6 +479,11 @@ class EndpointGateEndpointIntegrationTest {
       capturedRemoved.add(event);
     }
 
+    @EventListener
+    void onEvent(EndpointGateScheduleChangedEvent event) {
+      capturedScheduleChanged.add(event);
+    }
+
     List<EndpointGateChangedEvent> events() {
       return List.copyOf(captured);
     }
@@ -314,9 +492,14 @@ class EndpointGateEndpointIntegrationTest {
       return List.copyOf(capturedRemoved);
     }
 
+    List<EndpointGateScheduleChangedEvent> scheduleChangedEvents() {
+      return List.copyOf(capturedScheduleChanged);
+    }
+
     void clear() {
       captured.clear();
       capturedRemoved.clear();
+      capturedScheduleChanged.clear();
     }
   }
 }
