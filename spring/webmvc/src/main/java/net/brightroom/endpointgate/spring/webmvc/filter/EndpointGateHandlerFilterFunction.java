@@ -3,7 +3,6 @@ package net.brightroom.endpointgate.spring.webmvc.filter;
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
-import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
 import net.brightroom.endpointgate.core.provider.ConditionProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
 import net.brightroom.endpointgate.spring.webmvc.condition.HttpServletConditionVariables;
@@ -140,7 +139,7 @@ public class EndpointGateHandlerFilterFunction {
               () -> contextResolver.resolve(request.servletRequest()).orElse(null));
       AccessDecision decision = pipeline.evaluate(context);
       if (decision instanceof AccessDecision.Denied denied) {
-        return resolution.resolve(request, new EndpointGateAccessDeniedException(denied.gateId()));
+        return resolution.resolve(request, denied.toException());
       }
       return next.handle(request);
     };

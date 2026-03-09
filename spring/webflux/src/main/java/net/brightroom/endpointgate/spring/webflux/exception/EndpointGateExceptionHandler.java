@@ -1,6 +1,7 @@
 package net.brightroom.endpointgate.spring.webflux.exception;
 
 import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
+import net.brightroom.endpointgate.core.exception.EndpointGateScheduleInactiveException;
 import net.brightroom.endpointgate.spring.webflux.resolution.exceptionhandler.AccessDeniedExceptionHandlerResolution;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -24,6 +25,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class EndpointGateExceptionHandler {
 
   private final AccessDeniedExceptionHandlerResolution accessDeniedExceptionHandlerResolution;
+
+  @ExceptionHandler(EndpointGateScheduleInactiveException.class)
+  ResponseEntity<?> handleEndpointGateScheduleInactive(
+      ServerHttpRequest request, EndpointGateScheduleInactiveException e) {
+    return accessDeniedExceptionHandlerResolution.resolution(request, e);
+  }
 
   @ExceptionHandler(EndpointGateAccessDeniedException.class)
   ResponseEntity<?> handleEndpointGateAccessDenied(

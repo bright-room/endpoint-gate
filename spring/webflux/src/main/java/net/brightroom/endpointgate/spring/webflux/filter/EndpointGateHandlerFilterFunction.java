@@ -2,7 +2,6 @@ package net.brightroom.endpointgate.spring.webflux.filter;
 
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
-import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
 import net.brightroom.endpointgate.reactive.core.evaluation.ReactiveEndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
@@ -153,8 +152,7 @@ public class EndpointGateHandlerFilterFunction {
             .flatMap(
                 decision -> {
                   if (decision instanceof AccessDecision.Denied denied) {
-                    return resolution.resolve(
-                        request, new EndpointGateAccessDeniedException(denied.gateId()));
+                    return resolution.resolve(request, denied.toException());
                   }
                   return next.handle(request);
                 });

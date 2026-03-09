@@ -1,8 +1,10 @@
 package net.brightroom.endpointgate.core.provider;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -35,11 +37,16 @@ import org.jspecify.annotations.Nullable;
 public record Schedule(
     @Nullable LocalDateTime start, @Nullable LocalDateTime end, @Nullable ZoneId timezone) {
 
-  /** Validates that start is not after end. */
+  /** Validates that start is not after an end. */
   public Schedule {
-    if (start != null && end != null && start.isAfter(end)) {
-      throw new IllegalArgumentException(
-          "Schedule start must not be after end, but start=" + start + " end=" + end);
+    if (start != null) {
+      if (end != null) {
+        if (start.isAfter(end)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Schedule start must not be after end, but start=%s end=%s", start, end));
+        }
+      }
     }
   }
 
@@ -50,10 +57,47 @@ public record Schedule(
    * @return {@code true} if {@code now} falls within the configured window, {@code false} otherwise
    */
   public boolean isActive(Instant now) {
-    ZoneId zone = timezone != null ? timezone : ZoneId.systemDefault();
+    ZoneId zone = resolveZone();
     LocalDateTime localNow = now.atZone(zone).toLocalDateTime();
-    if (start != null && localNow.isBefore(start)) return false;
-    if (end != null && localNow.isAfter(end)) return false;
+    if (start != null) {
+      if (localNow.isBefore(start)) {
+        return false;
+      }
+    }
+    if (end != null) {
+      return !localNow.isAfter(end);
+    }
     return true;
+  }
+
+  /**
+   * Returns the retry-after {@link Instant} for this schedule, or {@code null} if not applicable.
+   *
+   * <p>Returns the {@link #start()} instant if {@code start} is non-null and in the future relative
+   * to the given {@code clock}. Returns {@code null} if {@code start} is null, or if {@code start}
+   * is already in the past (to avoid sending a stale retry-after hint to clients).
+   *
+   * @param clock the clock used to determine the current time
+   * @return the retry-after instant, or {@code null}
+   */
+  public @Nullable Instant retryAfterInstant(Clock clock) {
+    if (start == null) {
+      return null;
+    }
+    ZoneId zone = resolveZone();
+    ZonedDateTime zonedStart = start.atZone(zone);
+    Instant startInstant = zonedStart.toInstant();
+    Instant now = clock.instant();
+    if (startInstant.isBefore(now)) {
+      return null;
+    }
+    return startInstant;
+  }
+
+  private ZoneId resolveZone() {
+    if (timezone != null) {
+      return timezone;
+    }
+    return ZoneId.systemDefault();
   }
 }

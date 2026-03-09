@@ -6,7 +6,6 @@ import net.brightroom.endpointgate.core.annotation.EndpointGate;
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
-import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
 import net.brightroom.endpointgate.core.provider.ConditionProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
 import net.brightroom.endpointgate.spring.webmvc.condition.HttpServletConditionVariables;
@@ -74,7 +73,7 @@ public class EndpointGateInterceptor implements HandlerInterceptor {
     AccessDecision decision = pipeline.evaluate(context);
 
     if (decision instanceof AccessDecision.Denied denied) {
-      throw new EndpointGateAccessDeniedException(denied.gateId());
+      throw denied.toException();
     }
     return true;
   }

@@ -315,3 +315,28 @@ return switch (type) {
 - `if/else if/else` チェーンは分岐の追加漏れや順序依存のバグを招きやすい
 - `enum` に対する `switch` 式はコンパイラが網羅性を検証するため、安全性が高い
 - `if/else if/else` が必要になる状況自体が、型の設計やポリモーフィズムの活用で解消できることが多い
+
+---
+
+## CG-9: `+` 演算子による文字列結合の禁止
+
+文字列結合に `+` 演算子を使用せず、`String.format()` を使用すること。
+
+### NG
+
+```java
+throw new IllegalArgumentException(
+    "Schedule start must not be after end, but start=" + start + " end=" + end);
+```
+
+### OK
+
+```java
+throw new IllegalArgumentException(
+    String.format("Schedule start must not be after end, but start=%s end=%s", start, end));
+```
+
+### 理由
+
+- `+` 演算子による結合はリテラルと変数が混在すると可読性が低下する
+- `String.format()` はテンプレートと引数が分離されるため、メッセージの全体像を把握しやすい

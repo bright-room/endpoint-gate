@@ -2,6 +2,7 @@ package net.brightroom.endpointgate.spring.webmvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import net.brightroom.endpointgate.spring.webmvc.configuration.EndpointGateMvcTestAutoConfiguration;
@@ -20,7 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
  *   <li>Property configuration → {@code InMemoryScheduleProvider} auto-wiring → interceptor → HTTP
  *       response
  *   <li>Active schedule (start in the past) → 200 OK
- *   <li>Inactive schedule (start in the future) → 403 Forbidden
+ *   <li>Inactive schedule (start in the future) → 503 Service Unavailable + Retry-After header
+ *   <li>Inactive schedule (end only, no start) → 503 Service Unavailable, no Retry-After header
  *   <li>Timezone-aware schedule → correctly evaluated in the configured timezone
  * </ul>
  */
@@ -34,6 +36,9 @@ import org.springframework.test.web.servlet.MockMvc;
       // inactive-scheduled-gate: start far in the future → always inactive
       "endpoint-gate.gates.inactive-scheduled-gate.enabled=true",
       "endpoint-gate.gates.inactive-scheduled-gate.schedule.start=2099-01-01T00:00:00",
+      // end-only-inactive-scheduled-gate: end in the past, no start → inactive, no retry-after
+      "endpoint-gate.gates.end-only-inactive-scheduled-gate.enabled=true",
+      "endpoint-gate.gates.end-only-inactive-scheduled-gate.schedule.end=2020-01-01T00:00:00",
       // timezone-scheduled-gate: start far in the past with timezone → always active
       "endpoint-gate.gates.timezone-scheduled-gate.enabled=true",
       "endpoint-gate.gates.timezone-scheduled-gate.schedule.start=2020-01-01T00:00:00",
@@ -57,22 +62,42 @@ class EndpointGateInterceptorScheduleIntegrationTest {
   }
 
   @Test
-  void shouldBlockAccess_whenScheduleIsInactive() throws Exception {
+  void shouldReturn503_whenScheduleIsInactive() throws Exception {
     mockMvc
         .perform(get("/schedule/inactive"))
-        .andExpect(status().isForbidden())
+        .andExpect(status().isServiceUnavailable())
         .andExpect(
             content()
                 .json(
                     """
                     {
-                      "detail" : "Gate 'inactive-scheduled-gate' is not available",
-                      "instance" : "/schedule/inactive",
-                      "status" : 403,
-                      "title" : "Endpoint gate access denied",
+                      "status" : 503,
+                      "title" : "Endpoint gate temporarily unavailable",
                       "type" : "https://github.com/bright-room/endpoint-gate#response-types"
                     }
                     """));
+  }
+
+  @Test
+  void shouldReturnRetryAfterHeader_whenScheduleIsInactive() throws Exception {
+    mockMvc
+        .perform(get("/schedule/inactive"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(header().exists("Retry-After"))
+        .andExpect(
+            header()
+                .string(
+                    "Retry-After",
+                    org.hamcrest.Matchers.matchesPattern(
+                        "\\w{3}, \\d{1,2} \\w{3} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT")));
+  }
+
+  @Test
+  void shouldReturn503WithoutRetryAfter_whenEndOnlyScheduleIsInactive() throws Exception {
+    mockMvc
+        .perform(get("/schedule/end-only-inactive"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(header().doesNotExist("Retry-After"));
   }
 
   @Test

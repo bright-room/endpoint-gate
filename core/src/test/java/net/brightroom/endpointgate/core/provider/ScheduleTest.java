@@ -1,10 +1,12 @@
 package net.brightroom.endpointgate.core.provider;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -15,6 +17,8 @@ class ScheduleTest {
 
   // Fixed reference instant: 2026-06-15T12:00:00 UTC
   private final Instant now = Instant.parse("2026-06-15T12:00:00Z");
+  // Fixed clock at the same reference instant
+  private final Clock clock = Clock.fixed(Instant.parse("2026-06-15T12:00:00Z"), ZoneId.of("UTC"));
 
   // --- start only ---
 
@@ -168,6 +172,51 @@ class ScheduleTest {
   void constructor_doesNotThrow_whenEndIsNull() {
     assertThatNoException()
         .isThrownBy(() -> new Schedule(LocalDateTime.of(2026, 6, 15, 12, 0), null, null));
+  }
+
+  // --- retryAfterInstant ---
+
+  @Test
+  void retryAfterInstant_returnsNull_whenStartIsNull() {
+    Schedule schedule = new Schedule(null, LocalDateTime.of(2026, 6, 15, 11, 0), ZoneId.of("UTC"));
+
+    assertThat(schedule.retryAfterInstant(clock)).isNull();
+  }
+
+  @Test
+  void retryAfterInstant_returnsNull_whenStartIsInThePast() {
+    // start well before the clock instant
+    Schedule schedule = new Schedule(LocalDateTime.of(2026, 1, 1, 0, 0), null, ZoneId.of("UTC"));
+
+    assertThat(schedule.retryAfterInstant(clock)).isNull();
+  }
+
+  @Test
+  void retryAfterInstant_returnsStartInstant_whenStartIsInTheFuture() {
+    LocalDateTime futureStart = LocalDateTime.of(2026, 12, 1, 0, 0);
+    Schedule schedule = new Schedule(futureStart, null, ZoneId.of("UTC"));
+    Instant expected = futureStart.atZone(ZoneId.of("UTC")).toInstant();
+
+    assertThat(schedule.retryAfterInstant(clock)).isEqualTo(expected);
+  }
+
+  @Test
+  void retryAfterInstant_appliesTimezone_whenTimezoneIsConfigured() {
+    LocalDateTime futureStart = LocalDateTime.of(2026, 12, 1, 9, 0);
+    ZoneId tokyo = ZoneId.of("Asia/Tokyo");
+    Schedule schedule = new Schedule(futureStart, null, tokyo);
+    Instant expected = futureStart.atZone(tokyo).toInstant();
+
+    assertThat(schedule.retryAfterInstant(clock)).isEqualTo(expected);
+  }
+
+  @Test
+  void retryAfterInstant_usesSystemDefaultTimezone_whenTimezoneIsNull() {
+    // start in the future regardless of timezone
+    LocalDateTime futureStart = LocalDateTime.of(2026, 12, 1, 0, 0);
+    Schedule schedule = new Schedule(futureStart, null, null);
+
+    assertThat(schedule.retryAfterInstant(clock)).isNotNull();
   }
 
   // --- explicit UTC offset ---

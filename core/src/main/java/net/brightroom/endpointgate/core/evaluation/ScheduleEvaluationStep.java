@@ -27,6 +27,11 @@ public class ScheduleEvaluationStep implements EvaluationStep {
     return scheduleProvider
         .getSchedule(context.gateId())
         .filter(schedule -> !schedule.isActive(clock.instant()))
-        .map(schedule -> AccessDecision.denied(context.gateId(), DeniedReason.SCHEDULE_INACTIVE));
+        .map(
+            schedule ->
+                AccessDecision.denied(
+                    context.gateId(),
+                    DeniedReason.SCHEDULE_INACTIVE,
+                    schedule.retryAfterInstant(clock)));
   }
 }

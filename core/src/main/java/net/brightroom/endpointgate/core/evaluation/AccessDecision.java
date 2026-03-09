@@ -1,5 +1,10 @@
 package net.brightroom.endpointgate.core.evaluation;
 
+import java.time.Instant;
+import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
+import net.brightroom.endpointgate.core.exception.EndpointGateScheduleInactiveException;
+import org.jspecify.annotations.Nullable;
+
 /**
  * Represents the outcome of an endpoint gate evaluation pipeline.
  *
@@ -11,12 +16,32 @@ public sealed interface AccessDecision {
   record Allowed() implements AccessDecision {}
 
   /**
-   * Indicates that access is denied, with the gate identifier and reason.
+   * Indicates that access is denied, with the gate identifier, reason, and optional retry-after
+   * time.
    *
    * @param gateId the gate identifier that was denied
    * @param reason the reason for denial
+   * @param retryAfter the time after which the client may retry, or {@code null} if not applicable
    */
-  record Denied(String gateId, DeniedReason reason) implements AccessDecision {}
+  record Denied(String gateId, DeniedReason reason, @Nullable Instant retryAfter)
+      implements AccessDecision {
+
+    /**
+     * Converts this denied decision to the appropriate exception type.
+     *
+     * <p>If the reason is {@link DeniedReason#SCHEDULE_INACTIVE}, returns a {@link
+     * EndpointGateScheduleInactiveException}. Otherwise, returns a {@link
+     * EndpointGateAccessDeniedException}.
+     *
+     * @return the exception corresponding to this denial
+     */
+    public EndpointGateAccessDeniedException toException() {
+      if (reason == DeniedReason.SCHEDULE_INACTIVE) {
+        return new EndpointGateScheduleInactiveException(gateId, retryAfter);
+      }
+      return new EndpointGateAccessDeniedException(gateId);
+    }
+  }
 
   /** Reason for denying access in the evaluation pipeline. */
   enum DeniedReason {
@@ -40,13 +65,25 @@ public sealed interface AccessDecision {
   }
 
   /**
-   * Returns a {@link Denied} decision.
+   * Returns a {@link Denied} decision with no retry-after time.
    *
    * @param gateId the gate identifier that was denied
    * @param reason the reason for denial
    * @return a new {@code Denied} instance
    */
   static AccessDecision denied(String gateId, DeniedReason reason) {
-    return new Denied(gateId, reason);
+    return new Denied(gateId, reason, null);
+  }
+
+  /**
+   * Returns a {@link Denied} decision with a retry-after time.
+   *
+   * @param gateId the gate identifier that was denied
+   * @param reason the reason for denial
+   * @param retryAfter the time after which the client may retry
+   * @return a new {@code Denied} instance
+   */
+  static AccessDecision denied(String gateId, DeniedReason reason, Instant retryAfter) {
+    return new Denied(gateId, reason, retryAfter);
   }
 }

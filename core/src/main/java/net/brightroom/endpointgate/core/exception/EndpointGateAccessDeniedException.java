@@ -24,6 +24,17 @@ public class EndpointGateAccessDeniedException extends RuntimeException {
   }
 
   /**
+   * Constructor for subclasses that need to customize the exception message.
+   *
+   * @param gateId the identifier of the gate that is not available
+   * @param message the detail message
+   */
+  protected EndpointGateAccessDeniedException(String gateId, String message) {
+    super(message);
+    this.gateId = gateId;
+  }
+
+  /**
    * Returns the identifier of the gate that is not available.
    *
    * @return the identifier of the gate

@@ -1,8 +1,9 @@
 package net.brightroom.endpointgate.spring.webflux.resolution.handlerfilter;
 
 import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
+import net.brightroom.endpointgate.spring.core.resolution.AccessDeniedResponseAttributes;
 import net.brightroom.endpointgate.spring.core.resolution.ProblemDetailBuilder;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -14,9 +15,13 @@ class AccessDeniedHandlerFilterResolutionViaJsonResponse
   @Override
   public Mono<ServerResponse> resolve(ServerRequest request, EndpointGateAccessDeniedException e) {
     var body = ProblemDetailBuilder.build(request.path(), e);
-    return ServerResponse.status(HttpStatus.FORBIDDEN)
-        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-        .bodyValue(body);
+    var status = AccessDeniedResponseAttributes.resolveStatus(e);
+    var builder = ServerResponse.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON);
+    String retryAfter = AccessDeniedResponseAttributes.formatRetryAfter(e);
+    if (retryAfter != null) {
+      builder = builder.header(HttpHeaders.RETRY_AFTER, retryAfter);
+    }
+    return builder.bodyValue(body);
   }
 
   AccessDeniedHandlerFilterResolutionViaJsonResponse() {}

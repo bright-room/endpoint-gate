@@ -29,10 +29,15 @@ public class ReactiveScheduleEvaluationStep implements ReactiveEvaluationStep {
     return scheduleProvider
         .getSchedule(context.gateId())
         .map(
-            schedule ->
-                schedule.isActive(clock.instant())
-                    ? AccessDecision.allowed()
-                    : AccessDecision.denied(context.gateId(), DeniedReason.SCHEDULE_INACTIVE))
+            schedule -> {
+              if (schedule.isActive(clock.instant())) {
+                return AccessDecision.allowed();
+              }
+              return AccessDecision.denied(
+                  context.gateId(),
+                  DeniedReason.SCHEDULE_INACTIVE,
+                  schedule.retryAfterInstant(clock));
+            })
         .defaultIfEmpty(AccessDecision.allowed());
   }
 }

@@ -2,7 +2,8 @@ package net.brightroom.endpointgate.spring.webmvc.resolution.handlerfilter;
 
 import java.nio.charset.StandardCharsets;
 import net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException;
-import org.springframework.http.HttpStatus;
+import net.brightroom.endpointgate.spring.core.resolution.AccessDeniedResponseAttributes;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
@@ -20,9 +21,13 @@ class AccessDeniedHandlerFilterResolutionViaPlainTextResponse
    */
   @Override
   public ServerResponse resolve(ServerRequest request, EndpointGateAccessDeniedException e) {
-    return ServerResponse.status(HttpStatus.FORBIDDEN)
-        .contentType(TEXT_PLAIN_UTF8)
-        .body(e.getMessage());
+    var status = AccessDeniedResponseAttributes.resolveStatus(e);
+    var builder = ServerResponse.status(status).contentType(TEXT_PLAIN_UTF8);
+    String retryAfter = AccessDeniedResponseAttributes.formatRetryAfter(e);
+    if (retryAfter != null) {
+      builder = builder.header(HttpHeaders.RETRY_AFTER, retryAfter);
+    }
+    return builder.body(e.getMessage());
   }
 
   AccessDeniedHandlerFilterResolutionViaPlainTextResponse() {}
