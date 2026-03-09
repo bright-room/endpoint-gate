@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import net.brightroom.endpointgate.core.provider.Schedule;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveEndpointGateProvider;
@@ -68,13 +69,14 @@ public class ReactiveEndpointGateEndpoint {
    */
   @ReadOperation
   public EndpointGateEndpointResponse gate(@Selector String gateId) {
-    if (gateId == null || gateId.isBlank()) {
-      throw new IllegalArgumentException("gateId must not be null or blank");
-    }
+    validateGateId(gateId);
     var enabled = provider.isGateEnabled(gateId).block();
-    var rollout = rolloutProvider.getRolloutPercentage(gateId).blockOptional().orElse(100);
-    var condition = conditionProvider.getCondition(gateId).blockOptional().orElse(null);
-    var schedule = reactiveScheduleProvider.getSchedule(gateId).blockOptional().orElse(null);
+    Optional<Integer> rolloutOpt = rolloutProvider.getRolloutPercentage(gateId).blockOptional();
+    var rollout = rolloutOpt.orElse(100);
+    Optional<String> conditionOpt = conditionProvider.getCondition(gateId).blockOptional();
+    var condition = conditionOpt.orElse(null);
+    Optional<Schedule> scheduleOpt = reactiveScheduleProvider.getSchedule(gateId).blockOptional();
+    var schedule = scheduleOpt.orElse(null);
     return new EndpointGateEndpointResponse(
         gateId, Boolean.TRUE.equals(enabled), rollout, condition, buildScheduleResponse(schedule));
   }
@@ -126,39 +128,14 @@ public class ReactiveEndpointGateEndpoint {
       @Nullable LocalDateTime scheduleEnd,
       @Nullable String scheduleTimezone,
       @Nullable Boolean removeSchedule) {
-    if (gateId == null || gateId.isBlank()) {
-      throw new IllegalArgumentException("gateId must not be null or blank");
-    }
-    if (rollout != null && (rollout < 0 || rollout > 100)) {
-      throw new IllegalArgumentException("rollout must be between 0 and 100, but was: " + rollout);
-    }
+    validateGateId(gateId);
+    validateRollout(rollout);
     provider.setGateEnabled(gateId, enabled).block();
     if (rollout != null) {
       rolloutProvider.setRolloutPercentage(gateId, rollout).block();
     }
-    if (condition != null) {
-      if (condition.isEmpty()) {
-        conditionProvider.removeCondition(gateId).block();
-      } else {
-        conditionProvider.setCondition(gateId, condition).block();
-      }
-    }
-    if (Boolean.TRUE.equals(removeSchedule)) {
-      reactiveScheduleProvider.removeSchedule(gateId).block();
-      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, null));
-    } else if (scheduleStart != null || scheduleEnd != null || scheduleTimezone != null) {
-      if (scheduleStart == null && scheduleEnd == null) {
-        throw new IllegalArgumentException(
-            "At least one of scheduleStart or scheduleEnd is required when setting a schedule");
-      }
-      ZoneId timezone = defaultScheduleTimezone;
-      if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
-        timezone = ZoneId.of(scheduleTimezone);
-      }
-      Schedule newSchedule = new Schedule(scheduleStart, scheduleEnd, timezone);
-      reactiveScheduleProvider.setSchedule(gateId, newSchedule).block();
-      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, newSchedule));
-    }
+    updateCondition(gateId, condition);
+    processScheduleUpdate(gateId, scheduleStart, scheduleEnd, scheduleTimezone, removeSchedule);
     eventPublisher.publishEvent(
         new EndpointGateChangedEvent(this, gateId, enabled, rollout, condition));
     return buildGatesResponse();
@@ -176,9 +153,7 @@ public class ReactiveEndpointGateEndpoint {
    */
   @DeleteOperation
   public void deleteGate(@Selector String gateId) {
-    if (gateId == null || gateId.isBlank()) {
-      throw new IllegalArgumentException("gateId must not be null or blank");
-    }
+    validateGateId(gateId);
     Boolean removed = provider.removeGate(gateId).block();
     rolloutProvider.removeRolloutPercentage(gateId).block();
     conditionProvider.removeCondition(gateId).block();
@@ -219,6 +194,77 @@ public class ReactiveEndpointGateEndpoint {
     }
     return new ScheduleEndpointResponse(
         schedule.start(), schedule.end(), schedule.timezone(), schedule.isActive(clock.instant()));
+  }
+
+  private void validateGateId(String gateId) {
+    if (gateId == null) {
+      throw new IllegalArgumentException("gateId must not be null or blank");
+    }
+    if (gateId.isBlank()) {
+      throw new IllegalArgumentException("gateId must not be null or blank");
+    }
+  }
+
+  private void validateRollout(@Nullable Integer rollout) {
+    if (rollout == null) {
+      return;
+    }
+    if (rollout < 0) {
+      throw new IllegalArgumentException(
+          String.format("rollout must be between 0 and 100, but was: %d", rollout));
+    }
+    if (rollout > 100) {
+      throw new IllegalArgumentException(
+          String.format("rollout must be between 0 and 100, but was: %d", rollout));
+    }
+  }
+
+  private void updateCondition(String gateId, @Nullable String condition) {
+    if (condition == null) {
+      return;
+    }
+    if (condition.isEmpty()) {
+      conditionProvider.removeCondition(gateId).block();
+      return;
+    }
+    conditionProvider.setCondition(gateId, condition).block();
+  }
+
+  private void processScheduleUpdate(
+      String gateId,
+      @Nullable LocalDateTime scheduleStart,
+      @Nullable LocalDateTime scheduleEnd,
+      @Nullable String scheduleTimezone,
+      @Nullable Boolean removeSchedule) {
+    if (Boolean.TRUE.equals(removeSchedule)) {
+      reactiveScheduleProvider.removeSchedule(gateId).block();
+      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, null));
+      return;
+    }
+    if (scheduleStart == null) {
+      if (scheduleEnd == null) {
+        if (scheduleTimezone == null) {
+          return;
+        }
+        throw new IllegalArgumentException(
+            "At least one of scheduleStart or scheduleEnd is required when setting a schedule");
+      }
+    }
+    ZoneId timezone = resolveScheduleTimezone(scheduleTimezone);
+    Schedule newSchedule = new Schedule(scheduleStart, scheduleEnd, timezone);
+    reactiveScheduleProvider.setSchedule(gateId, newSchedule).block();
+    eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, newSchedule));
+  }
+
+  @Nullable
+  private ZoneId resolveScheduleTimezone(@Nullable String scheduleTimezone) {
+    if (scheduleTimezone == null) {
+      return defaultScheduleTimezone;
+    }
+    if (scheduleTimezone.isEmpty()) {
+      return defaultScheduleTimezone;
+    }
+    return ZoneId.of(scheduleTimezone);
   }
 
   /**

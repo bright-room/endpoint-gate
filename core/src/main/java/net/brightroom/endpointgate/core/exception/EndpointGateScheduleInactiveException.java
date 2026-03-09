@@ -22,7 +22,7 @@ public class EndpointGateScheduleInactiveException extends EndpointGateAccessDen
   private final @Nullable Instant retryAfter;
 
   /**
-   * Constructor.
+   * Creates a new {@code EndpointGateScheduleInactiveException} for the specified gate.
    *
    * @param gateId the identifier of the gate that is not available
    * @param retryAfter the schedule start time as an {@link Instant}, or {@code null} if the

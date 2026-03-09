@@ -86,21 +86,34 @@ public class ScheduleProperties {
 
   // for property binding
   void setStart(LocalDateTime start) {
-    if (start != null && this.end != null && start.isAfter(this.end)) {
-      throw new IllegalArgumentException(
-          "schedule.start must not be after schedule.end, but start=" + start + " end=" + this.end);
+    if (start == null) {
+      this.start = null;
+      return;
+    }
+    if (this.end != null) {
+      if (start.isAfter(this.end)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "schedule.start must not be after schedule.end, but start=%s end=%s",
+                start, this.end));
+      }
     }
     this.start = start;
   }
 
   // for property binding
   void setEnd(LocalDateTime end) {
-    if (end != null && this.start != null && end.isBefore(this.start)) {
-      throw new IllegalArgumentException(
-          "schedule.end must not be before schedule.start, but end="
-              + end
-              + " start="
-              + this.start);
+    if (end == null) {
+      this.end = null;
+      return;
+    }
+    if (this.start != null) {
+      if (end.isBefore(this.start)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "schedule.end must not be before schedule.start, but end=%s start=%s",
+                end, this.start));
+      }
     }
     this.end = end;
   }
