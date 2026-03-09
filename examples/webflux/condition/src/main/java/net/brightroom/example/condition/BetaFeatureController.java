@@ -5,7 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
-/** Query parameter-based condition example. Requires {@code beta=true} query parameter to access. */
+/**
+ * Query parameter-based condition example. Requires {@code beta=true} query parameter to access.
+ */
 @RestController
 public class BetaFeatureController {
 
