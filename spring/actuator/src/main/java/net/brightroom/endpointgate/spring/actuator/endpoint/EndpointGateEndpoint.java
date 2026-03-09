@@ -93,15 +93,21 @@ public class EndpointGateEndpoint {
    *   <li>any other string — condition is set to the given value
    * </ul>
    *
+   * <p>For schedule parameters: setting a schedule is a <b>full replacement</b>, not a partial
+   * update. A new {@link Schedule} is created from all three schedule parameters, replacing any
+   * existing schedule entirely. At least one of {@code scheduleStart} or {@code scheduleEnd} must
+   * be provided; specifying only {@code scheduleTimezone} will result in an {@link
+   * IllegalArgumentException}.
+   *
    * @param gateId the identifier of the endpoint gate to update
    * @param enabled the new enabled state
    * @param rollout the new rollout percentage (0–100), or {@code null} to leave unchanged
    * @param condition the new condition expression, {@code ""} to remove, or {@code null} to leave
    *     unchanged
-   * @param scheduleStart the schedule start time, or {@code null} to leave unchanged
-   * @param scheduleEnd the schedule end time, or {@code null} to leave unchanged
+   * @param scheduleStart the schedule start time, or {@code null} if only an end time is needed
+   * @param scheduleEnd the schedule end time, or {@code null} for an open-ended schedule
    * @param scheduleTimezone the schedule timezone string (e.g. {@code "Asia/Tokyo"}), or {@code
-   *     null} to leave unchanged
+   *     null} to use the system default timezone
    * @param removeSchedule {@code true} to remove the schedule, or {@code null}/{@code false} to
    *     leave unchanged
    * @return a response reflecting the updated state of all gates
@@ -137,6 +143,10 @@ public class EndpointGateEndpoint {
       scheduleProvider.removeSchedule(gateId);
       eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, null));
     } else if (scheduleStart != null || scheduleEnd != null || scheduleTimezone != null) {
+      if (scheduleStart == null && scheduleEnd == null) {
+        throw new IllegalArgumentException(
+            "At least one of scheduleStart or scheduleEnd is required when setting a schedule");
+      }
       ZoneId timezone = null;
       if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
         timezone = ZoneId.of(scheduleTimezone);

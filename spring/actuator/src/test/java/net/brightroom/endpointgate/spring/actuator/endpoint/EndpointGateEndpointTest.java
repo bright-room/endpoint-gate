@@ -671,4 +671,15 @@ class EndpointGateEndpointTest {
     assertThat(response.schedule()).isNotNull();
     assertThat(response.schedule().start()).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
   }
+
+  @Test
+  void updateGate_throwsIllegalArgumentException_whenOnlyScheduleTimezoneProvided() {
+    var provider = new MutableInMemoryEndpointGateProvider(Map.of("gate-a", true), false);
+    var endpoint = endpointWithMutableSchedule(provider);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> endpoint.updateGate("gate-a", true, null, null, null, null, "Asia/Tokyo", null))
+        .withMessageContaining("At least one of scheduleStart or scheduleEnd is required");
+  }
 }

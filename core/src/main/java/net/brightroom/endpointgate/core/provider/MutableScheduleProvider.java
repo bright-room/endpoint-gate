@@ -6,6 +6,9 @@ import java.util.Map;
  * An extension of {@link ScheduleProvider} that supports dynamic mutation of schedules at runtime.
  *
  * <p>Implementations must be thread-safe, as schedules may be read and updated concurrently.
+ *
+ * <p>This interface serves as an SPI for the actuator endpoint to update schedules at runtime
+ * without restarting the application.
  */
 public interface MutableScheduleProvider extends ScheduleProvider {
 
