@@ -119,14 +119,23 @@ public class EndpointGateHandlerFilterFunction {
    */
   public HandlerFilterFunction<ServerResponse, ServerResponse> of(
       String gateId, String conditionFallback, int rolloutFallback) {
-    if (gateId == null || gateId.isBlank()) {
+    if (gateId == null) {
       throw new IllegalArgumentException(
           "gateId must not be null or blank. "
               + "A blank value causes fail-open behavior and allows access unconditionally.");
     }
-    if (rolloutFallback < 0 || rolloutFallback > 100) {
+    if (gateId.isBlank()) {
       throw new IllegalArgumentException(
-          "rollout must be between 0 and 100, but was: " + rolloutFallback);
+          "gateId must not be null or blank. "
+              + "A blank value causes fail-open behavior and allows access unconditionally.");
+    }
+    if (rolloutFallback < 0) {
+      throw new IllegalArgumentException(
+          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
+    }
+    if (rolloutFallback > 100) {
+      throw new IllegalArgumentException(
+          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
     }
     return (request, next) ->
         Mono.zip(

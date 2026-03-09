@@ -58,7 +58,8 @@ public record Schedule(
    */
   public boolean isActive(Instant now) {
     ZoneId zone = resolveZone();
-    LocalDateTime localNow = now.atZone(zone).toLocalDateTime();
+    ZonedDateTime zonedNow = now.atZone(zone);
+    LocalDateTime localNow = zonedNow.toLocalDateTime();
     if (start != null) {
       if (localNow.isBefore(start)) {
         return false;

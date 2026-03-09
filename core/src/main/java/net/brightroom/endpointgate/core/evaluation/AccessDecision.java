@@ -80,10 +80,10 @@ public sealed interface AccessDecision {
    *
    * @param gateId the gate identifier that was denied
    * @param reason the reason for denial
-   * @param retryAfter the time after which the client may retry
+   * @param retryAfter the time after which the client may retry, or {@code null} if not applicable
    * @return a new {@code Denied} instance
    */
-  static AccessDecision denied(String gateId, DeniedReason reason, Instant retryAfter) {
+  static AccessDecision denied(String gateId, DeniedReason reason, @Nullable Instant retryAfter) {
     return new Denied(gateId, reason, retryAfter);
   }
 }
