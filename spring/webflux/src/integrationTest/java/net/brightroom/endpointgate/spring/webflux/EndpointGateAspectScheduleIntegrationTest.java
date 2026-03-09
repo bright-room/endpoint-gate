@@ -88,7 +88,13 @@ class EndpointGateAspectScheduleIntegrationTest {
         .expectStatus()
         .isEqualTo(503)
         .expectHeader()
-        .exists("Retry-After");
+        .exists("Retry-After")
+        .expectHeader()
+        .value(
+            "Retry-After",
+            value ->
+                org.assertj.core.api.Assertions.assertThat(value)
+                    .matches("\\w{3}, \\d{1,2} \\w{3} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT"));
   }
 
   @Test

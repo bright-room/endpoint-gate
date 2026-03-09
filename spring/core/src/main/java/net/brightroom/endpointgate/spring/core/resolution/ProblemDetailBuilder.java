@@ -24,15 +24,8 @@ public final class ProblemDetailBuilder {
    * @return a populated {@link ProblemDetail}
    */
   public static ProblemDetail build(String requestPath, EndpointGateAccessDeniedException e) {
-    HttpStatus status;
-    String title;
-    if (e instanceof EndpointGateScheduleInactiveException) {
-      status = HttpStatus.SERVICE_UNAVAILABLE;
-      title = "Endpoint gate temporarily unavailable";
-    } else {
-      status = HttpStatus.FORBIDDEN;
-      title = "Endpoint gate access denied";
-    }
+    HttpStatus status = AccessDeniedResponseAttributes.resolveStatus(e);
+    String title = resolveTitle(e);
     ProblemDetail problemDetail = ProblemDetail.forStatus(status);
     problemDetail.setType(
         URI.create("https://github.com/bright-room/endpoint-gate#response-types"));
@@ -40,5 +33,12 @@ public final class ProblemDetailBuilder {
     problemDetail.setDetail(e.getMessage());
     problemDetail.setInstance(URI.create(requestPath));
     return problemDetail;
+  }
+
+  private static String resolveTitle(EndpointGateAccessDeniedException e) {
+    if (e instanceof EndpointGateScheduleInactiveException) {
+      return "Endpoint gate temporarily unavailable";
+    }
+    return "Endpoint gate access denied";
   }
 }

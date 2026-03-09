@@ -83,7 +83,13 @@ class EndpointGateInterceptorScheduleIntegrationTest {
     mockMvc
         .perform(get("/schedule/inactive"))
         .andExpect(status().isServiceUnavailable())
-        .andExpect(header().exists("Retry-After"));
+        .andExpect(header().exists("Retry-After"))
+        .andExpect(
+            header()
+                .string(
+                    "Retry-After",
+                    org.hamcrest.Matchers.matchesPattern(
+                        "\\w{3}, \\d{1,2} \\w{3} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT")));
   }
 
   @Test

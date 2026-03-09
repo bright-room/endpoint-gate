@@ -37,11 +37,16 @@ import org.jspecify.annotations.Nullable;
 public record Schedule(
     @Nullable LocalDateTime start, @Nullable LocalDateTime end, @Nullable ZoneId timezone) {
 
-  /** Validates that start is not after end. */
+  /** Validates that start is not after an end. */
   public Schedule {
-    if (start != null && end != null && start.isAfter(end)) {
-      throw new IllegalArgumentException(
-          "Schedule start must not be after end, but start=" + start + " end=" + end);
+    if (start != null) {
+      if (end != null) {
+        if (start.isAfter(end)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Schedule start must not be after end, but start=%s end=%s", start, end));
+        }
+      }
     }
   }
 
@@ -52,10 +57,16 @@ public record Schedule(
    * @return {@code true} if {@code now} falls within the configured window, {@code false} otherwise
    */
   public boolean isActive(Instant now) {
-    ZoneId zone = timezone != null ? timezone : ZoneId.systemDefault();
+    ZoneId zone = resolveZone();
     LocalDateTime localNow = now.atZone(zone).toLocalDateTime();
-    if (start != null && localNow.isBefore(start)) return false;
-    if (end != null && localNow.isAfter(end)) return false;
+    if (start != null) {
+      if (localNow.isBefore(start)) {
+        return false;
+      }
+    }
+    if (end != null) {
+      return !localNow.isAfter(end);
+    }
     return true;
   }
 
