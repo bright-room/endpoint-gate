@@ -1,0 +1,6 @@
+endpoint-gate:
+  default-enabled: true
+  gates:
+    gradual-feature:
+      enabled: true
+      rollout: 60
