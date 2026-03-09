@@ -103,7 +103,7 @@ Built-in `AccessDeniedInterceptResolution` implementations (selected by `endpoin
 | Property | Default | Description |
 |---|---|---|
 | `endpoint-gate.gates.<id>.enabled` | `true` | Whether the gate is enabled |
-| `endpoint-gate.gates.<id>.rollout` | `100` | Rollout percentage (0-100) |
+| `endpoint-gate.gates.<id>.rollout` | — | Rollout percentage (0-100). If omitted, interceptor/aspect use `100`; `HandlerFilterFunction` uses the `rolloutFallback` argument of `of(gateId, rolloutFallback)` |
 | `endpoint-gate.gates.<id>.condition` | `""` | SpEL condition expression |
 | `endpoint-gate.gates.<id>.schedule.start` | — | Schedule start time (ISO 8601) |
 | `endpoint-gate.gates.<id>.schedule.end` | — | Schedule end time (ISO 8601) |

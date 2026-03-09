@@ -33,10 +33,16 @@ import reactor.core.publisher.Mono;
  *
  * <p>A real Netty server is used (instead of {@code @WebFluxTest}) to ensure the full Spring
  * WebFlux pipeline — including context propagation of {@code ServerWebExchange} — is exercised.
+ *
+ * <p>Also verifies that {@link EndpointGateHandlerFilterFunction#of(String, int)} uses the {@code
+ * rolloutFallback} argument when {@code rollout} is not configured in YAML.
  */
 @SpringBootTest(
     webEnvironment = WebEnvironment.RANDOM_PORT,
-    properties = {"endpoint-gate.gates.rollout-feature.enabled=true"})
+    properties = {
+      "endpoint-gate.gates.rollout-feature.enabled=true",
+      "endpoint-gate.gates.no-rollout-feature.enabled=true"
+    })
 class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
 
   private static final EndpointGateContext FIXED_CONTEXT = new EndpointGateContext("fixed-user-id");
@@ -59,6 +65,15 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
       return route()
           .GET("/functional/rollout-test", req -> ServerResponse.ok().bodyValue("Allowed"))
           .filter(endpointGateFilter.of("rollout-feature", 50))
+          .build();
+    }
+
+    @Bean
+    RouterFunction<ServerResponse> functionalRolloutFallbackTestRoute(
+        EndpointGateHandlerFilterFunction endpointGateFilter) {
+      return route()
+          .GET("/functional/rollout-fallback-test", req -> ServerResponse.ok().bodyValue("Allowed"))
+          .filter(endpointGateFilter.of("no-rollout-feature", 0))
           .build();
     }
   }
@@ -104,5 +119,17 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         .isOk()
         .expectBody(String.class)
         .isEqualTo("Allowed");
+  }
+
+  @Test
+  void rolloutFallback_isApplied_whenRolloutNotConfiguredInYaml() {
+    // no-rollout-feature has no rollout configured in YAML; of("no-rollout-feature", 0) uses 0 as
+    // fallback, meaning no requests are allowed.
+    webTestClient
+        .get()
+        .uri("/functional/rollout-fallback-test")
+        .exchange()
+        .expectStatus()
+        .isForbidden();
   }
 }

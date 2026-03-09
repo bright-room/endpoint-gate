@@ -30,10 +30,9 @@ class EndpointGateAutoConfigurationMultiplePropertiesTest {
 
   @Test
   void shouldLoadRolloutPercentages() {
+    // g1 and g2 have no rollout configured in YAML, so they are excluded from rolloutPercentages()
     Map<String, Integer> rolloutPercentages = endpointGateProperties.rolloutPercentages();
-    assertEquals(2, rolloutPercentages.size());
-    assertEquals(100, rolloutPercentages.get("g1"));
-    assertEquals(100, rolloutPercentages.get("g2"));
+    assertTrue(rolloutPercentages.isEmpty());
   }
 
   @Test
