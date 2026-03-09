@@ -1,15 +1,18 @@
 package net.brightroom.endpointgate.spring.actuator.endpoint;
 
 import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import net.brightroom.endpointgate.core.provider.Schedule;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveRolloutPercentageProvider;
-import net.brightroom.endpointgate.reactive.core.provider.ReactiveScheduleProvider;
+import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveScheduleProvider;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.DeleteOperation;
@@ -39,7 +42,7 @@ public class ReactiveEndpointGateEndpoint {
   private final MutableReactiveEndpointGateProvider provider;
   private final MutableReactiveRolloutPercentageProvider rolloutProvider;
   private final MutableReactiveConditionProvider conditionProvider;
-  private final ReactiveScheduleProvider reactiveScheduleProvider;
+  private final MutableReactiveScheduleProvider reactiveScheduleProvider;
   private final boolean defaultEnabled;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -70,8 +73,9 @@ public class ReactiveEndpointGateEndpoint {
     var enabled = provider.isGateEnabled(gateId).block();
     var rollout = rolloutProvider.getRolloutPercentage(gateId).blockOptional().orElse(100);
     var condition = conditionProvider.getCondition(gateId).blockOptional().orElse(null);
+    var schedule = reactiveScheduleProvider.getSchedule(gateId).blockOptional().orElse(null);
     return new EndpointGateEndpointResponse(
-        gateId, Boolean.TRUE.equals(enabled), rollout, condition, buildScheduleResponse(gateId));
+        gateId, Boolean.TRUE.equals(enabled), rollout, condition, buildScheduleResponse(schedule));
   }
 
   /**
@@ -96,11 +100,24 @@ public class ReactiveEndpointGateEndpoint {
    * @param rollout the new rollout percentage (0–100), or {@code null} to leave unchanged
    * @param condition the new condition expression, {@code ""} to remove, or {@code null} to leave
    *     unchanged
+   * @param scheduleStart the schedule start time, or {@code null} to leave unchanged
+   * @param scheduleEnd the schedule end time, or {@code null} to leave unchanged
+   * @param scheduleTimezone the schedule timezone string (e.g. {@code "Asia/Tokyo"}), or {@code
+   *     null} to leave unchanged
+   * @param removeSchedule {@code true} to remove the schedule, or {@code null}/{@code false} to
+   *     leave unchanged
    * @return a response reflecting the updated state of all gates
    */
   @WriteOperation
   public EndpointGatesEndpointResponse updateGate(
-      String gateId, boolean enabled, @Nullable Integer rollout, @Nullable String condition) {
+      String gateId,
+      boolean enabled,
+      @Nullable Integer rollout,
+      @Nullable String condition,
+      @Nullable LocalDateTime scheduleStart,
+      @Nullable LocalDateTime scheduleEnd,
+      @Nullable String scheduleTimezone,
+      @Nullable Boolean removeSchedule) {
     if (gateId == null || gateId.isBlank()) {
       throw new IllegalArgumentException("gateId must not be null or blank");
     }
@@ -117,6 +134,18 @@ public class ReactiveEndpointGateEndpoint {
       } else {
         conditionProvider.setCondition(gateId, condition).block();
       }
+    }
+    if (Boolean.TRUE.equals(removeSchedule)) {
+      reactiveScheduleProvider.removeSchedule(gateId).block();
+      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, null));
+    } else if (scheduleStart != null || scheduleEnd != null || scheduleTimezone != null) {
+      ZoneId timezone = null;
+      if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
+        timezone = ZoneId.of(scheduleTimezone);
+      }
+      Schedule newSchedule = new Schedule(scheduleStart, scheduleEnd, timezone);
+      reactiveScheduleProvider.setSchedule(gateId, newSchedule).block();
+      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, newSchedule));
     }
     eventPublisher.publishEvent(
         new EndpointGateChangedEvent(this, gateId, enabled, rollout, condition));
@@ -141,6 +170,7 @@ public class ReactiveEndpointGateEndpoint {
     Boolean removed = provider.removeGate(gateId).block();
     rolloutProvider.removeRolloutPercentage(gateId).block();
     conditionProvider.removeCondition(gateId).block();
+    reactiveScheduleProvider.removeSchedule(gateId).block();
     if (Boolean.TRUE.equals(removed)) {
       eventPublisher.publishEvent(new EndpointGateRemovedEvent(this, gateId));
     }
@@ -154,6 +184,7 @@ public class ReactiveEndpointGateEndpoint {
     var rolloutPercentages =
         rolloutProvider.getRolloutPercentages().blockOptional().orElse(Map.of());
     var conditions = conditionProvider.getConditions().blockOptional().orElse(Map.of());
+    var schedules = reactiveScheduleProvider.getSchedules().blockOptional().orElse(Map.of());
     var gateList =
         gates.entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
@@ -164,14 +195,13 @@ public class ReactiveEndpointGateEndpoint {
                         e.getValue(),
                         rolloutPercentages.getOrDefault(e.getKey(), 100),
                         conditions.getOrDefault(e.getKey(), null),
-                        buildScheduleResponse(e.getKey())))
+                        buildScheduleResponse(schedules.get(e.getKey()))))
             .toList();
     return new EndpointGatesEndpointResponse(gateList, defaultEnabled);
   }
 
   @Nullable
-  private ScheduleEndpointResponse buildScheduleResponse(String gateId) {
-    Schedule schedule = reactiveScheduleProvider.getSchedule(gateId).blockOptional().orElse(null);
+  private ScheduleEndpointResponse buildScheduleResponse(@Nullable Schedule schedule) {
     if (schedule == null) {
       return null;
     }
@@ -185,8 +215,8 @@ public class ReactiveEndpointGateEndpoint {
    * @param provider the mutable reactive endpoint gate provider
    * @param rolloutProvider the mutable reactive rollout percentage provider
    * @param conditionProvider the mutable reactive condition provider
-   * @param reactiveScheduleProvider the reactive schedule provider used to look up schedules per
-   *     gate
+   * @param reactiveScheduleProvider the mutable reactive schedule provider used to look up and
+   *     mutate schedules per gate
    * @param defaultEnabled the default-enabled value to include in responses
    * @param eventPublisher the publisher used to broadcast gate change events
    * @param clock the clock used to determine schedule active status in responses
@@ -195,7 +225,7 @@ public class ReactiveEndpointGateEndpoint {
       MutableReactiveEndpointGateProvider provider,
       MutableReactiveRolloutPercentageProvider rolloutProvider,
       MutableReactiveConditionProvider conditionProvider,
-      ReactiveScheduleProvider reactiveScheduleProvider,
+      MutableReactiveScheduleProvider reactiveScheduleProvider,
       boolean defaultEnabled,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {

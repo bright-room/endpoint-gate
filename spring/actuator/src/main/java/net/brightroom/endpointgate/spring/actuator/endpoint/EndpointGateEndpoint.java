@@ -1,13 +1,17 @@
 package net.brightroom.endpointgate.spring.actuator.endpoint;
 
 import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import net.brightroom.endpointgate.core.provider.MutableConditionProvider;
 import net.brightroom.endpointgate.core.provider.MutableEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableRolloutPercentageProvider;
-import net.brightroom.endpointgate.core.provider.ScheduleProvider;
+import net.brightroom.endpointgate.core.provider.MutableScheduleProvider;
+import net.brightroom.endpointgate.core.provider.Schedule;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.DeleteOperation;
@@ -36,7 +40,7 @@ public class EndpointGateEndpoint {
   private final MutableEndpointGateProvider provider;
   private final MutableRolloutPercentageProvider rolloutProvider;
   private final MutableConditionProvider conditionProvider;
-  private final ScheduleProvider scheduleProvider;
+  private final MutableScheduleProvider scheduleProvider;
   private final boolean defaultEnabled;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -94,11 +98,24 @@ public class EndpointGateEndpoint {
    * @param rollout the new rollout percentage (0–100), or {@code null} to leave unchanged
    * @param condition the new condition expression, {@code ""} to remove, or {@code null} to leave
    *     unchanged
+   * @param scheduleStart the schedule start time, or {@code null} to leave unchanged
+   * @param scheduleEnd the schedule end time, or {@code null} to leave unchanged
+   * @param scheduleTimezone the schedule timezone string (e.g. {@code "Asia/Tokyo"}), or {@code
+   *     null} to leave unchanged
+   * @param removeSchedule {@code true} to remove the schedule, or {@code null}/{@code false} to
+   *     leave unchanged
    * @return a response reflecting the updated state of all gates
    */
   @WriteOperation
   public EndpointGatesEndpointResponse updateGate(
-      String gateId, boolean enabled, @Nullable Integer rollout, @Nullable String condition) {
+      String gateId,
+      boolean enabled,
+      @Nullable Integer rollout,
+      @Nullable String condition,
+      @Nullable LocalDateTime scheduleStart,
+      @Nullable LocalDateTime scheduleEnd,
+      @Nullable String scheduleTimezone,
+      @Nullable Boolean removeSchedule) {
     if (gateId == null || gateId.isBlank()) {
       throw new IllegalArgumentException("gateId must not be null or blank");
     }
@@ -115,6 +132,18 @@ public class EndpointGateEndpoint {
       } else {
         conditionProvider.setCondition(gateId, condition);
       }
+    }
+    if (Boolean.TRUE.equals(removeSchedule)) {
+      scheduleProvider.removeSchedule(gateId);
+      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, null));
+    } else if (scheduleStart != null || scheduleEnd != null || scheduleTimezone != null) {
+      ZoneId timezone = null;
+      if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
+        timezone = ZoneId.of(scheduleTimezone);
+      }
+      Schedule newSchedule = new Schedule(scheduleStart, scheduleEnd, timezone);
+      scheduleProvider.setSchedule(gateId, newSchedule);
+      eventPublisher.publishEvent(new EndpointGateScheduleChangedEvent(this, gateId, newSchedule));
     }
     eventPublisher.publishEvent(
         new EndpointGateChangedEvent(this, gateId, enabled, rollout, condition));
@@ -139,6 +168,7 @@ public class EndpointGateEndpoint {
     boolean removed = provider.removeGate(gateId);
     rolloutProvider.removeRolloutPercentage(gateId);
     conditionProvider.removeCondition(gateId);
+    scheduleProvider.removeSchedule(gateId);
     if (removed) {
       eventPublisher.publishEvent(new EndpointGateRemovedEvent(this, gateId));
     }
@@ -147,6 +177,7 @@ public class EndpointGateEndpoint {
   private EndpointGatesEndpointResponse buildGatesResponse() {
     var rolloutPercentages = rolloutProvider.getRolloutPercentages();
     var conditions = conditionProvider.getConditions();
+    var schedules = scheduleProvider.getSchedules();
     var gateList =
         provider.getGates().entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
@@ -157,7 +188,7 @@ public class EndpointGateEndpoint {
                         e.getValue(),
                         rolloutPercentages.getOrDefault(e.getKey(), 100),
                         conditions.getOrDefault(e.getKey(), null),
-                        buildScheduleResponse(e.getKey())))
+                        buildScheduleResponse(schedules.get(e.getKey()))))
             .toList();
     return new EndpointGatesEndpointResponse(gateList, defaultEnabled);
   }
@@ -176,13 +207,23 @@ public class EndpointGateEndpoint {
         .orElse(null);
   }
 
+  @Nullable
+  private ScheduleEndpointResponse buildScheduleResponse(@Nullable Schedule schedule) {
+    if (schedule == null) {
+      return null;
+    }
+    return new ScheduleEndpointResponse(
+        schedule.start(), schedule.end(), schedule.timezone(), schedule.isActive(clock.instant()));
+  }
+
   /**
    * Constructs an {@code EndpointGateEndpoint}.
    *
    * @param provider the mutable endpoint gate provider
    * @param rolloutProvider the mutable rollout percentage provider
    * @param conditionProvider the mutable condition provider
-   * @param scheduleProvider the schedule provider used to look up schedules per gate
+   * @param scheduleProvider the mutable schedule provider used to look up and mutate schedules per
+   *     gate
    * @param defaultEnabled the default-enabled value to include in responses
    * @param eventPublisher the publisher used to broadcast gate change events
    * @param clock the clock used to determine schedule active status in responses
@@ -191,7 +232,7 @@ public class EndpointGateEndpoint {
       MutableEndpointGateProvider provider,
       MutableRolloutPercentageProvider rolloutProvider,
       MutableConditionProvider conditionProvider,
-      ScheduleProvider scheduleProvider,
+      MutableScheduleProvider scheduleProvider,
       boolean defaultEnabled,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {

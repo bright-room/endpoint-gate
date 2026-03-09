@@ -19,18 +19,20 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
 import net.brightroom.endpointgate.core.provider.Schedule;
-import net.brightroom.endpointgate.reactive.core.provider.InMemoryReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveRolloutPercentageProvider;
+import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import reactor.core.publisher.Mono;
 
@@ -49,8 +51,8 @@ class ReactiveEndpointGateEndpointTest {
     return new MutableInMemoryReactiveConditionProvider(Map.of());
   }
 
-  private InMemoryReactiveScheduleProvider emptyScheduleProvider() {
-    return new InMemoryReactiveScheduleProvider(Map.of());
+  private MutableInMemoryReactiveScheduleProvider emptyScheduleProvider() {
+    return new MutableInMemoryReactiveScheduleProvider(Map.of());
   }
 
   private ReactiveEndpointGateEndpoint endpoint(
@@ -75,7 +77,7 @@ class ReactiveEndpointGateEndpointTest {
         provider,
         emptyRolloutProvider(),
         emptyConditionProvider(),
-        new InMemoryReactiveScheduleProvider(schedules),
+        new MutableInMemoryReactiveScheduleProvider(schedules),
         defaultEnabled,
         eventPublisher,
         clock);
@@ -101,7 +103,7 @@ class ReactiveEndpointGateEndpointTest {
     var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    var response = endpoint.updateGate("gate-a", false, null, null);
+    var response = endpoint.updateGate("gate-a", false, null, null, null, null, null, null);
 
     assertThat(response.gates())
         .filteredOn(g -> g.gateId().equals("gate-a"))
@@ -114,7 +116,7 @@ class ReactiveEndpointGateEndpointTest {
     var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    endpoint.updateGate("gate-a", false, null, null);
+    endpoint.updateGate("gate-a", false, null, null, null, null, null, null);
 
     var captor = ArgumentCaptor.forClass(EndpointGateChangedEvent.class);
     verify(eventPublisher).publishEvent(captor.capture());
@@ -127,7 +129,7 @@ class ReactiveEndpointGateEndpointTest {
     var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of(), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    var response = endpoint.updateGate("new-gate", true, null, null);
+    var response = endpoint.updateGate("new-gate", true, null, null, null, null, null, null);
 
     assertThat(response.gates())
         .filteredOn(g -> g.gateId().equals("new-gate"))
@@ -152,7 +154,7 @@ class ReactiveEndpointGateEndpointTest {
             Map.of("gate-a", true, "gate-b", true), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    var response = endpoint.updateGate("gate-a", false, null, null);
+    var response = endpoint.updateGate("gate-a", false, null, null, null, null, null, null);
 
     assertEquals(2, response.gates().size());
     assertThat(response.gates())
@@ -166,7 +168,7 @@ class ReactiveEndpointGateEndpointTest {
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> endpoint.updateGate(null, true, null, null))
+        .isThrownBy(() -> endpoint.updateGate(null, true, null, null, null, null, null, null))
         .withMessageContaining("gateId must not be null or blank");
   }
 
@@ -176,7 +178,7 @@ class ReactiveEndpointGateEndpointTest {
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> endpoint.updateGate("", true, null, null))
+        .isThrownBy(() -> endpoint.updateGate("", true, null, null, null, null, null, null))
         .withMessageContaining("gateId must not be null or blank");
   }
 
@@ -186,7 +188,7 @@ class ReactiveEndpointGateEndpointTest {
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> endpoint.updateGate("   ", true, null, null))
+        .isThrownBy(() -> endpoint.updateGate("   ", true, null, null, null, null, null, null))
         .withMessageContaining("gateId must not be null or blank");
   }
 
@@ -310,7 +312,7 @@ class ReactiveEndpointGateEndpointTest {
     var rolloutProvider = new MutableInMemoryReactiveRolloutPercentageProvider(Map.of());
     var endpoint = endpoint(provider, rolloutProvider, false);
 
-    var response = endpoint.updateGate("gate-a", true, 50, null);
+    var response = endpoint.updateGate("gate-a", true, 50, null, null, null, null, null);
 
     assertThat(response.gates())
         .filteredOn(g -> g.gateId().equals("gate-a"))
@@ -323,7 +325,7 @@ class ReactiveEndpointGateEndpointTest {
     var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    endpoint.updateGate("gate-a", true, 60, null);
+    endpoint.updateGate("gate-a", true, 60, null, null, null, null, null);
 
     var captor = ArgumentCaptor.forClass(EndpointGateChangedEvent.class);
     verify(eventPublisher).publishEvent(captor.capture());
@@ -336,7 +338,7 @@ class ReactiveEndpointGateEndpointTest {
     var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
-    endpoint.updateGate("gate-a", true, null, null);
+    endpoint.updateGate("gate-a", true, null, null, null, null, null, null);
 
     var captor = ArgumentCaptor.forClass(EndpointGateChangedEvent.class);
     verify(eventPublisher).publishEvent(captor.capture());
@@ -349,7 +351,7 @@ class ReactiveEndpointGateEndpointTest {
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> endpoint.updateGate("gate-a", true, -1, null))
+        .isThrownBy(() -> endpoint.updateGate("gate-a", true, -1, null, null, null, null, null))
         .withMessageContaining("rollout must be between 0 and 100");
   }
 
@@ -359,7 +361,7 @@ class ReactiveEndpointGateEndpointTest {
     var endpoint = endpoint(provider, emptyRolloutProvider(), false);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> endpoint.updateGate("gate-a", true, 101, null))
+        .isThrownBy(() -> endpoint.updateGate("gate-a", true, 101, null, null, null, null, null))
         .withMessageContaining("rollout must be between 0 and 100");
   }
 
@@ -369,8 +371,10 @@ class ReactiveEndpointGateEndpointTest {
     var rolloutProvider = new MutableInMemoryReactiveRolloutPercentageProvider(Map.of());
     var endpoint = endpoint(provider, rolloutProvider, false);
 
-    assertThatNoException().isThrownBy(() -> endpoint.updateGate("gate-a", true, 0, null));
-    assertThatNoException().isThrownBy(() -> endpoint.updateGate("gate-a", true, 100, null));
+    assertThatNoException()
+        .isThrownBy(() -> endpoint.updateGate("gate-a", true, 0, null, null, null, null, null));
+    assertThatNoException()
+        .isThrownBy(() -> endpoint.updateGate("gate-a", true, 100, null, null, null, null, null));
   }
 
   @Test
@@ -505,7 +509,7 @@ class ReactiveEndpointGateEndpointTest {
             provider,
             emptyRolloutProvider(),
             emptyConditionProvider(),
-            new InMemoryReactiveScheduleProvider(Map.of("gate-a", schedule)),
+            new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule)),
             false,
             eventPublisher,
             fixedClock);
@@ -541,5 +545,159 @@ class ReactiveEndpointGateEndpointTest {
         .filteredOn(g -> g.gateId().equals("gate-a"))
         .extracting(EndpointGateEndpointResponse::schedule)
         .containsOnlyNulls();
+  }
+
+  // --- updateGate schedule management ---
+
+  private ReactiveEndpointGateEndpoint endpointWithMutableSchedule(
+      MutableInMemoryReactiveEndpointGateProvider provider) {
+    return new ReactiveEndpointGateEndpoint(
+        provider,
+        emptyRolloutProvider(),
+        emptyConditionProvider(),
+        emptyScheduleProvider(),
+        false,
+        eventPublisher,
+        clock);
+  }
+
+  @Test
+  void updateGate_setsSchedule_whenScheduleParamsProvided() {
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var endpoint = endpointWithMutableSchedule(provider);
+
+    var response =
+        endpoint.updateGate(
+            "gate-a",
+            true,
+            null,
+            null,
+            LocalDateTime.of(2026, 4, 1, 0, 0),
+            LocalDateTime.of(2026, 12, 31, 23, 59, 59),
+            "Asia/Tokyo",
+            null);
+
+    assertThat(response.gates())
+        .filteredOn(g -> g.gateId().equals("gate-a"))
+        .extracting(EndpointGateEndpointResponse::schedule)
+        .doesNotContainNull();
+  }
+
+  @Test
+  void updateGate_replacesExistingSchedule_withNewSchedule() {
+    var original = new Schedule(LocalDateTime.of(2025, 1, 1, 0, 0), null, null);
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", original));
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate(
+        "gate-a", true, null, null, LocalDateTime.of(2026, 6, 1, 0, 0), null, null, null);
+
+    assertThat(scheduleProvider.getSchedule("gate-a").blockOptional())
+        .hasValueSatisfying(
+            s -> assertThat(s.start()).isEqualTo(LocalDateTime.of(2026, 6, 1, 0, 0)));
+  }
+
+  @Test
+  void updateGate_removesSchedule_whenRemoveScheduleIsTrue() {
+    var schedule = new Schedule(LocalDateTime.of(2025, 1, 1, 0, 0), null, null);
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule));
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate("gate-a", true, null, null, null, null, null, true);
+
+    assertNull(scheduleProvider.getSchedule("gate-a").block());
+  }
+
+  @Test
+  void updateGate_publishesScheduleChangedEvent_whenScheduleIsSet() {
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var endpoint = endpointWithMutableSchedule(provider);
+
+    endpoint.updateGate(
+        "gate-a", true, null, null, LocalDateTime.of(2026, 4, 1, 0, 0), null, null, null);
+
+    var captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+    verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+    assertThat(captor.getAllValues())
+        .anyMatch(e -> e instanceof EndpointGateScheduleChangedEvent)
+        .filteredOn(e -> e instanceof EndpointGateScheduleChangedEvent)
+        .extracting(e -> ((EndpointGateScheduleChangedEvent) e).gateId())
+        .contains("gate-a");
+  }
+
+  @Test
+  void updateGate_publishesScheduleChangedEventWithNullSchedule_whenRemoveScheduleIsTrue() {
+    var schedule = new Schedule(LocalDateTime.of(2025, 1, 1, 0, 0), null, null);
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule));
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate("gate-a", true, null, null, null, null, null, true);
+
+    var captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+    verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+    assertThat(captor.getAllValues())
+        .filteredOn(e -> e instanceof EndpointGateScheduleChangedEvent)
+        .extracting(e -> ((EndpointGateScheduleChangedEvent) e).schedule())
+        .containsOnlyNulls();
+  }
+
+  @Test
+  void deleteGate_removesSchedule() {
+    var schedule = new Schedule(LocalDateTime.of(2025, 1, 1, 0, 0), null, null);
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule));
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            eventPublisher,
+            clock);
+
+    endpoint.deleteGate("gate-a");
+
+    assertNull(scheduleProvider.getSchedule("gate-a").block());
+  }
+
+  @Test
+  void gate_returnsUpdatedSchedule_afterUpdateGate() {
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var endpoint = endpointWithMutableSchedule(provider);
+
+    endpoint.updateGate(
+        "gate-a", true, null, null, LocalDateTime.of(2026, 4, 1, 0, 0), null, null, null);
+
+    var response = endpoint.gate("gate-a");
+    assertThat(response.schedule()).isNotNull();
+    assertThat(response.schedule().start()).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
   }
 }

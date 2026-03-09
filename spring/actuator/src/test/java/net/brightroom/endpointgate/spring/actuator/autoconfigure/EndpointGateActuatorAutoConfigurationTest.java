@@ -10,14 +10,18 @@ import net.brightroom.endpointgate.core.provider.InMemoryEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableInMemoryEndpointGateProvider;
 import net.brightroom.endpointgate.core.provider.MutableInMemoryRolloutPercentageProvider;
+import net.brightroom.endpointgate.core.provider.MutableInMemoryScheduleProvider;
 import net.brightroom.endpointgate.core.provider.MutableRolloutPercentageProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
+import net.brightroom.endpointgate.core.provider.ScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveRolloutPercentageProvider;
+import net.brightroom.endpointgate.reactive.core.provider.MutableInMemoryReactiveScheduleProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.MutableReactiveRolloutPercentageProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveEndpointGateProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
+import net.brightroom.endpointgate.reactive.core.provider.ReactiveScheduleProvider;
 import net.brightroom.endpointgate.spring.actuator.endpoint.EndpointGateEndpoint;
 import net.brightroom.endpointgate.spring.actuator.endpoint.ReactiveEndpointGateEndpoint;
 import net.brightroom.endpointgate.spring.actuator.health.EndpointGateHealthIndicator;
@@ -51,8 +55,19 @@ class EndpointGateActuatorAutoConfigurationTest {
           context -> {
             assertThat(context).hasSingleBean(MutableInMemoryEndpointGateProvider.class);
             assertThat(context).hasSingleBean(MutableInMemoryRolloutPercentageProvider.class);
+            assertThat(context).hasSingleBean(MutableInMemoryScheduleProvider.class);
             assertThat(context).hasSingleBean(EndpointGateEndpoint.class);
             assertThat(context).doesNotHaveBean(ReactiveEndpointGateEndpoint.class);
+          });
+    }
+
+    @Test
+    void scheduleProvider_isMutableInMemoryScheduleProvider() {
+      contextRunner.run(
+          context -> {
+            assertThat(context).hasSingleBean(ScheduleProvider.class);
+            assertThat(context.getBean(ScheduleProvider.class))
+                .isInstanceOf(MutableInMemoryScheduleProvider.class);
           });
     }
 
@@ -155,8 +170,19 @@ class EndpointGateActuatorAutoConfigurationTest {
             assertThat(context).hasSingleBean(MutableInMemoryReactiveEndpointGateProvider.class);
             assertThat(context)
                 .hasSingleBean(MutableInMemoryReactiveRolloutPercentageProvider.class);
+            assertThat(context).hasSingleBean(MutableInMemoryReactiveScheduleProvider.class);
             assertThat(context).hasSingleBean(ReactiveEndpointGateEndpoint.class);
             assertThat(context).doesNotHaveBean(EndpointGateEndpoint.class);
+          });
+    }
+
+    @Test
+    void reactiveScheduleProvider_isMutableInMemoryReactiveScheduleProvider() {
+      contextRunner.run(
+          context -> {
+            assertThat(context).hasSingleBean(ReactiveScheduleProvider.class);
+            assertThat(context.getBean(ReactiveScheduleProvider.class))
+                .isInstanceOf(MutableInMemoryReactiveScheduleProvider.class);
           });
     }
 
