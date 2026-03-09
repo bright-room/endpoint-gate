@@ -1,0 +1,4 @@
+endpoint-gate:
+  gates:
+    known-feature:
+      enabled: true

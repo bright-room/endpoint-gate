@@ -109,7 +109,7 @@ EOF
 <!-- 変更・追加されるパッケージとクラスの構成を示す。新規追加は (new)、変更は (modify) で表記する -->
 
 ```
-module/src/main/java/net/brightroom/featureflag/
+module/src/main/java/net/brightroom/endpointgate/
 ├── subpackage/
 │   ├── NewClass.java          (new)
 │   └── ExistingClass.java     (modify)

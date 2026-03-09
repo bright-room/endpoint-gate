@@ -1,0 +1,9 @@
+endpoint-gate:
+  gates:
+    stable-api:
+      enabled: true
+    beta-api:
+      enabled: true
+      rollout: 50
+    experimental-api:
+      enabled: false

@@ -1,0 +1,2 @@
+# Activating this profile registers UserIdReactiveContextResolver as the ReactiveEndpointGateContextResolver bean.
+# Note: This affects ALL rollout endpoints, not just the sticky-rollout endpoint.

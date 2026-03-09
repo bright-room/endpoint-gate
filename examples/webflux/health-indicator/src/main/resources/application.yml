@@ -1,0 +1,18 @@
+endpoint-gate:
+  gates:
+    active-feature:
+      enabled: true
+    inactive-feature:
+      enabled: false
+    rollout-feature:
+      enabled: true
+      rollout: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,endpoint-gates
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,4 @@
+external-endpoint-gates:
+  flags:
+    reactive-feature: true
+    beta-feature: false
