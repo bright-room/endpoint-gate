@@ -1,0 +1,11 @@
+spring:
+  docker:
+    compose:
+      file: ../../docker/compose.yaml
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: postgres
+
+endpoint-gate:
+  default-enabled: false
