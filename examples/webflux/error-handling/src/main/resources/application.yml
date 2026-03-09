@@ -1,0 +1,6 @@
+endpoint-gate:
+  gates:
+    premium-feature:
+      enabled: false
+    new-dashboard:
+      enabled: false
