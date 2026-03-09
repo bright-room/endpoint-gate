@@ -8,6 +8,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class GatePropertiesTest {
 
+  @Test
+  void rollout_defaultsToNull() {
+    GateProperties config = new GateProperties();
+    assertNull(config.rollout());
+  }
+
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 50, 99, 100})
   void setRollout_shouldAcceptValidValues(int rollout) {

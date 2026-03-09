@@ -14,8 +14,7 @@
     {
       "name": "endpoint-gate.gates.[*].rollout",
       "type": "java.lang.Integer",
-      "description": "Rollout percentage for this endpoint gate (0-100). 100 means fully rolled out to all requests; 0 means no requests even if enabled.",
-      "defaultValue": 100
+      "description": "Rollout percentage for this endpoint gate (0-100). 100 means fully rolled out to all requests; 0 means no requests even if enabled. If omitted, interceptor and aspect use 100; HandlerFilterFunction uses the rolloutFallback argument of of(gateId, rolloutFallback)."
     },
     {
       "name": "endpoint-gate.gates.[*].condition",

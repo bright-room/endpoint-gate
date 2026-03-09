@@ -28,7 +28,7 @@ package net.brightroom.endpointgate.spring.core.properties;
 public class GateProperties {
 
   private boolean enabled = true;
-  private int rollout = 100;
+  private Integer rollout;
   private String condition = "";
   private ScheduleProperties schedule;
 
@@ -42,14 +42,15 @@ public class GateProperties {
   }
 
   /**
-   * Returns the rollout percentage for this gate (0–100).
+   * Returns the rollout percentage for this gate (0–100), or {@code null} if not explicitly
+   * configured.
    *
-   * <p>100 means fully enabled (all requests). 0 means effectively disabled (no requests even if
-   * the gate is enabled).
+   * <p>{@code null} indicates that no rollout percentage was specified in configuration, allowing
+   * fallback values to be applied by the caller.
    *
-   * @return the rollout percentage
+   * @return the rollout percentage, or {@code null} if not configured
    */
-  public int rollout() {
+  public Integer rollout() {
     return rollout;
   }
 

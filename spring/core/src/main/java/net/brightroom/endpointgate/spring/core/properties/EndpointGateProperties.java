@@ -55,7 +55,12 @@ public class EndpointGateProperties {
    */
   public Map<String, Integer> rolloutPercentages() {
     var result = new HashMap<String, Integer>();
-    gates.forEach((id, config) -> result.put(id, config.rollout()));
+    gates.forEach(
+        (id, config) -> {
+          if (config.rollout() != null) {
+            result.put(id, config.rollout());
+          }
+        });
     return Map.copyOf(result);
   }
 
