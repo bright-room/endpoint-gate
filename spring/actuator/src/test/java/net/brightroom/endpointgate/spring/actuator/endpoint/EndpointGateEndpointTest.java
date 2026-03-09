@@ -61,6 +61,7 @@ class EndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -75,6 +76,7 @@ class EndpointGateEndpointTest {
         emptyConditionProvider(),
         new MutableInMemoryScheduleProvider(schedules),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -482,6 +484,7 @@ class EndpointGateEndpointTest {
             emptyConditionProvider(),
             new MutableInMemoryScheduleProvider(Map.of("gate-a", schedule)),
             false,
+            null,
             eventPublisher,
             fixedClock);
 
@@ -528,6 +531,7 @@ class EndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         false,
+        null,
         eventPublisher,
         clock);
   }
@@ -566,6 +570,7 @@ class EndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -589,6 +594,7 @@ class EndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -626,6 +632,7 @@ class EndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -651,6 +658,7 @@ class EndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -681,5 +689,58 @@ class EndpointGateEndpointTest {
         .isThrownBy(
             () -> endpoint.updateGate("gate-a", true, null, null, null, null, "Asia/Tokyo", null))
         .withMessageContaining("At least one of scheduleStart or scheduleEnd is required");
+  }
+
+  // --- defaultScheduleTimezone fallback ---
+
+  @Test
+  void updateGate_usesDefaultScheduleTimezone_whenScheduleTimezoneNotSpecified() {
+    var provider = new MutableInMemoryEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryScheduleProvider(Map.of());
+    var endpoint =
+        new EndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            ZoneId.of("Asia/Tokyo"),
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate(
+        "gate-a", true, null, null, LocalDateTime.of(2026, 6, 1, 0, 0), null, null, null);
+
+    assertThat(scheduleProvider.getSchedule("gate-a"))
+        .hasValueSatisfying(s -> assertThat(s.timezone()).isEqualTo(ZoneId.of("Asia/Tokyo")));
+  }
+
+  @Test
+  void updateGate_usesExplicitTimezone_overDefaultScheduleTimezone() {
+    var provider = new MutableInMemoryEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryScheduleProvider(Map.of());
+    var endpoint =
+        new EndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            ZoneId.of("Asia/Tokyo"),
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate(
+        "gate-a",
+        true,
+        null,
+        null,
+        LocalDateTime.of(2026, 6, 1, 0, 0),
+        null,
+        "America/New_York",
+        null);
+
+    assertThat(scheduleProvider.getSchedule("gate-a"))
+        .hasValueSatisfying(s -> assertThat(s.timezone()).isEqualTo(ZoneId.of("America/New_York")));
   }
 }

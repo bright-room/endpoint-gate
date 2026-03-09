@@ -3,13 +3,14 @@ package net.brightroom.endpointgate.spring.core.properties;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import net.brightroom.endpointgate.core.provider.Schedule;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Configuration for the schedule window of a single endpoint gate.
  *
  * <p>Defines an optional {@code start} and {@code end} time (as {@link LocalDateTime}) and an
- * optional {@code timezone}. Use {@link #toSchedule()} to obtain the {@link Schedule} SPI value
- * object which provides the {@code isActive(Instant)} evaluation logic.
+ * optional {@code timezone}. Use {@link #toSchedule(ZoneId)} to obtain the {@link Schedule} SPI
+ * value object which provides the {@code isActive(Instant)} evaluation logic.
  *
  * <p>Configuration example in {@code application.yml}:
  *
@@ -29,7 +30,9 @@ import net.brightroom.endpointgate.core.provider.Schedule;
  *   <li>{@code end} only — the gate is active until {@code end}
  *   <li>both — the gate is active between {@code start} and {@code end} (inclusive)
  *   <li>neither — the gate is always active (equivalent to no schedule)
- *   <li>{@code timezone} omitted — system default timezone is used
+ *   <li>{@code timezone} omitted — the global default timezone ({@code
+ *       endpoint-gate.schedule.default-timezone}) is used if configured, otherwise the system
+ *       default timezone
  * </ul>
  */
 public class ScheduleProperties {
@@ -39,12 +42,18 @@ public class ScheduleProperties {
   private ZoneId timezone;
 
   /**
-   * Converts this property binding object to the SPI value type.
+   * Converts this property binding object to the SPI value type, using the given default timezone
+   * when this schedule has no timezone configured.
    *
-   * @return a new {@link Schedule} with the same start, end, and timezone values
+   * @param defaultTimezone the fallback timezone, or {@code null} to use the system default
+   * @return a new {@link Schedule} with the resolved timezone
    */
-  Schedule toSchedule() {
-    return new Schedule(start, end, timezone);
+  Schedule toSchedule(@Nullable ZoneId defaultTimezone) {
+    ZoneId resolvedTimezone = timezone;
+    if (resolvedTimezone == null) {
+      resolvedTimezone = defaultTimezone;
+    }
+    return new Schedule(start, end, resolvedTimezone);
   }
 
   /**

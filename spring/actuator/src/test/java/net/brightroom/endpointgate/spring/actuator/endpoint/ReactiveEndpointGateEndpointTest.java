@@ -65,6 +65,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -79,6 +80,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         new MutableInMemoryReactiveScheduleProvider(schedules),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -247,6 +249,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             emptyScheduleProvider(),
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -511,6 +514,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule)),
             false,
+            null,
             eventPublisher,
             fixedClock);
 
@@ -557,6 +561,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         false,
+        null,
         eventPublisher,
         clock);
   }
@@ -595,6 +600,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -618,6 +624,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -655,6 +662,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -680,6 +688,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -699,6 +708,57 @@ class ReactiveEndpointGateEndpointTest {
     var response = endpoint.gate("gate-a");
     assertThat(response.schedule()).isNotNull();
     assertThat(response.schedule().start()).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
+  }
+
+  @Test
+  void updateGate_usesDefaultScheduleTimezone_whenScheduleTimezoneNotSpecified() {
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of());
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            ZoneId.of("Asia/Tokyo"),
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate(
+        "gate-a", true, null, null, LocalDateTime.of(2026, 6, 1, 0, 0), null, null, null);
+
+    assertThat(scheduleProvider.getSchedule("gate-a").blockOptional())
+        .hasValueSatisfying(s -> assertThat(s.timezone()).isEqualTo(ZoneId.of("Asia/Tokyo")));
+  }
+
+  @Test
+  void updateGate_usesExplicitTimezone_overDefaultScheduleTimezone() {
+    var provider = new MutableInMemoryReactiveEndpointGateProvider(Map.of("gate-a", true), false);
+    var scheduleProvider = new MutableInMemoryReactiveScheduleProvider(Map.of());
+    var endpoint =
+        new ReactiveEndpointGateEndpoint(
+            provider,
+            emptyRolloutProvider(),
+            emptyConditionProvider(),
+            scheduleProvider,
+            false,
+            ZoneId.of("Asia/Tokyo"),
+            eventPublisher,
+            clock);
+
+    endpoint.updateGate(
+        "gate-a",
+        true,
+        null,
+        null,
+        LocalDateTime.of(2026, 6, 1, 0, 0),
+        null,
+        "America/New_York",
+        null);
+
+    assertThat(scheduleProvider.getSchedule("gate-a").blockOptional())
+        .hasValueSatisfying(s -> assertThat(s.timezone()).isEqualTo(ZoneId.of("America/New_York")));
   }
 
   @Test

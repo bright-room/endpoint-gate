@@ -51,8 +51,13 @@
     {
       "name": "endpoint-gate.gates.[*].schedule.timezone",
       "type": "java.time.ZoneId",
-      "description": "The timezone used to evaluate start and end times. If omitted, the system default timezone is used.",
+      "description": "The timezone used to evaluate start and end times. If omitted, the global default timezone (endpoint-gate.schedule.default-timezone) is used. If neither is set, the system default timezone is used.",
       "defaultValue": "system default"
+    },
+    {
+      "name": "endpoint-gate.schedule.default-timezone",
+      "type": "java.time.ZoneId",
+      "description": "The default timezone used for schedule evaluation when a gate does not specify its own timezone. Fallback order: gate-specific timezone → this default → system default timezone."
     }
   ]
 }

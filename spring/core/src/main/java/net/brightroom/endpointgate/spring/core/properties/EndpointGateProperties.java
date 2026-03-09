@@ -32,6 +32,7 @@ public class EndpointGateProperties {
   private Map<String, GateProperties> gates = new HashMap<>();
   private ResponseProperties response = new ResponseProperties();
   private ConditionProperties condition = new ConditionProperties();
+  private GlobalScheduleProperties schedule = new GlobalScheduleProperties();
   private boolean defaultEnabled = false;
 
   /**
@@ -92,7 +93,7 @@ public class EndpointGateProperties {
     gates.forEach(
         (id, config) -> {
           if (config.schedule() != null) {
-            result.put(id, config.schedule().toSchedule());
+            result.put(id, config.schedule().toSchedule(schedule.defaultTimezone()));
           }
         });
     return Map.copyOf(result);
@@ -126,6 +127,15 @@ public class EndpointGateProperties {
   }
 
   /**
+   * Returns the global schedule properties.
+   *
+   * @return the global schedule properties
+   */
+  public GlobalScheduleProperties schedule() {
+    return schedule;
+  }
+
+  /**
    * Returns whether undefined endpoint gates are enabled by default.
    *
    * @return {@code true} if undefined gates are enabled (fail-open), {@code false} if disabled
@@ -148,6 +158,11 @@ public class EndpointGateProperties {
   // for property binding
   void setCondition(ConditionProperties condition) {
     this.condition = condition;
+  }
+
+  // for property binding
+  void setSchedule(GlobalScheduleProperties schedule) {
+    this.schedule = schedule;
   }
 
   // for property binding

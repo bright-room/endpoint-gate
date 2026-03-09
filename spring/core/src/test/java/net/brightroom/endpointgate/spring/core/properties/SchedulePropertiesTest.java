@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 
 class SchedulePropertiesTest {
@@ -103,15 +104,46 @@ class SchedulePropertiesTest {
     assertThatNoException().isThrownBy(() -> schedule.setStart(null));
   }
 
-  // --- toSchedule() ---
+  // --- toSchedule(ZoneId) ---
 
   @Test
-  void toSchedule_returnsScheduleWithSameValues() {
+  void toSchedule_usesIndividualTimezone_whenBothIndividualAndDefaultAreSet() {
+    ScheduleProperties config = newSchedule();
+    config.setStart(LocalDateTime.of(2026, 6, 15, 10, 0));
+    config.setTimezone(ZoneId.of("Asia/Tokyo"));
+
+    var schedule = config.toSchedule(ZoneId.of("Europe/London"));
+
+    assertEquals(ZoneId.of("Asia/Tokyo"), schedule.timezone());
+  }
+
+  @Test
+  void toSchedule_usesDefaultTimezone_whenIndividualTimezoneIsNull() {
+    ScheduleProperties config = newSchedule();
+    config.setStart(LocalDateTime.of(2026, 6, 15, 10, 0));
+
+    var schedule = config.toSchedule(ZoneId.of("America/New_York"));
+
+    assertEquals(ZoneId.of("America/New_York"), schedule.timezone());
+  }
+
+  @Test
+  void toSchedule_returnsNullTimezone_whenBothIndividualAndDefaultAreNull() {
+    ScheduleProperties config = newSchedule();
+    config.setStart(LocalDateTime.of(2026, 6, 15, 10, 0));
+
+    var schedule = config.toSchedule(null);
+
+    assertNull(schedule.timezone());
+  }
+
+  @Test
+  void toSchedule_returnsScheduleWithSameStartAndEnd() {
     ScheduleProperties config = newSchedule();
     config.setStart(LocalDateTime.of(2026, 6, 15, 10, 0));
     config.setEnd(LocalDateTime.of(2026, 6, 15, 18, 0));
 
-    var schedule = config.toSchedule();
+    var schedule = config.toSchedule(null);
 
     assertEquals(LocalDateTime.of(2026, 6, 15, 10, 0), schedule.start());
     assertEquals(LocalDateTime.of(2026, 6, 15, 18, 0), schedule.end());
