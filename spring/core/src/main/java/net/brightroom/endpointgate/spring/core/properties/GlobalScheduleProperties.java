@@ -1,6 +1,7 @@
 package net.brightroom.endpointgate.spring.core.properties;
 
 import java.time.ZoneId;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Global schedule configuration properties.
@@ -23,7 +24,7 @@ public class GlobalScheduleProperties {
    *
    * @return the default timezone, or {@code null}
    */
-  public ZoneId defaultTimezone() {
+  public @Nullable ZoneId defaultTimezone() {
     return defaultTimezone;
   }
 

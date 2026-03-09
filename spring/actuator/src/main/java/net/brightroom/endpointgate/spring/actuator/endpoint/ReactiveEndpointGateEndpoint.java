@@ -110,7 +110,8 @@ public class ReactiveEndpointGateEndpoint {
    * @param scheduleStart the schedule start time, or {@code null} if only an end time is needed
    * @param scheduleEnd the schedule end time, or {@code null} for an open-ended schedule
    * @param scheduleTimezone the schedule timezone string (e.g. {@code "Asia/Tokyo"}), or {@code
-   *     null} to use the system default timezone
+   *     null} to use the global default timezone ({@code endpoint-gate.schedule.default-timezone}),
+   *     falling back to the system default timezone if no global default is configured
    * @param removeSchedule {@code true} to remove the schedule, or {@code null}/{@code false} to
    *     leave unchanged
    * @return a response reflecting the updated state of all gates
