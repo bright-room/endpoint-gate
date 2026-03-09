@@ -626,7 +626,7 @@ If an exception occurs during the health check, the component reports `DOWN`.
 
 ### Event integration
 
-An `EndpointGateChangedEvent` is published every time a gate is updated via the actuator endpoint. An `EndpointGateRemovedEvent` is published when a gate that existed is deleted. Subscribe with `@EventListener` to react to changes (e.g., clearing caches, logging audit trails).
+An `EndpointGateChangedEvent` is published every time a gate is updated via the actuator endpoint. An `EndpointGateRemovedEvent` is published when a gate that existed is deleted. An `EndpointGateScheduleChangedEvent` is published when a gate's schedule is set, updated, or removed. Subscribe with `@EventListener` to react to changes (e.g., clearing caches, logging audit trails).
 
 
 > **WebFlux (reactive) environments:** Events are published synchronously on the calling thread, which may be the Netty event loop thread. Listeners must not perform blocking operations directly; use `@Async` or subscribe on `Schedulers.boundedElastic()` to offload blocking work.
@@ -643,6 +643,15 @@ class EndpointGateChangeListener {
   @EventListener
   void onGateRemoved(EndpointGateRemovedEvent event) {
     log.info("Gate '{}' was removed", event.gateId());
+  }
+
+  @EventListener
+  void onGateScheduleChanged(EndpointGateScheduleChangedEvent event) {
+    if (event.schedule() != null) {
+      log.info("Gate '{}' schedule updated to {}", event.gateId(), event.schedule());
+    } else {
+      log.info("Gate '{}' schedule removed", event.gateId());
+    }
   }
 }
 ```
