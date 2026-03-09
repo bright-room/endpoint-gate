@@ -44,6 +44,7 @@ public class ReactiveEndpointGateEndpoint {
   private final MutableReactiveConditionProvider conditionProvider;
   private final MutableReactiveScheduleProvider reactiveScheduleProvider;
   private final boolean defaultEnabled;
+  @Nullable private final ZoneId defaultScheduleTimezone;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
 
@@ -149,7 +150,7 @@ public class ReactiveEndpointGateEndpoint {
         throw new IllegalArgumentException(
             "At least one of scheduleStart or scheduleEnd is required when setting a schedule");
       }
-      ZoneId timezone = null;
+      ZoneId timezone = defaultScheduleTimezone;
       if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
         timezone = ZoneId.of(scheduleTimezone);
       }
@@ -228,6 +229,8 @@ public class ReactiveEndpointGateEndpoint {
    * @param reactiveScheduleProvider the mutable reactive schedule provider used to look up and
    *     mutate schedules per gate
    * @param defaultEnabled the default-enabled value to include in responses
+   * @param defaultScheduleTimezone the global default timezone used when a schedule update does not
+   *     specify a timezone, or {@code null} to use the system default timezone
    * @param eventPublisher the publisher used to broadcast gate change events
    * @param clock the clock used to determine schedule active status in responses
    */
@@ -237,6 +240,7 @@ public class ReactiveEndpointGateEndpoint {
       MutableReactiveConditionProvider conditionProvider,
       MutableReactiveScheduleProvider reactiveScheduleProvider,
       boolean defaultEnabled,
+      @Nullable ZoneId defaultScheduleTimezone,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
     this.provider = provider;
@@ -244,6 +248,7 @@ public class ReactiveEndpointGateEndpoint {
     this.conditionProvider = conditionProvider;
     this.reactiveScheduleProvider = reactiveScheduleProvider;
     this.defaultEnabled = defaultEnabled;
+    this.defaultScheduleTimezone = defaultScheduleTimezone;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
   }

@@ -111,6 +111,7 @@ Built-in `AccessDeniedInterceptResolution` implementations (selected by `endpoin
 | `endpoint-gate.default-enabled` | `false` | Undefined gate policy (fail-closed / fail-open) |
 | `endpoint-gate.response.type` | `JSON` | Response format: `JSON`, `PLAIN_TEXT`, `HTML` |
 | `endpoint-gate.condition.fail-on-error` | `true` | SpEL error handling (fail-closed / fail-open) |
+| `endpoint-gate.schedule.default-timezone` | — | Default timezone for schedule evaluation (fallback: gate-specific → this default → system default) |
 
 ## Coding Guidelines
 

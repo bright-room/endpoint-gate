@@ -42,6 +42,7 @@ public class EndpointGateEndpoint {
   private final MutableConditionProvider conditionProvider;
   private final MutableScheduleProvider scheduleProvider;
   private final boolean defaultEnabled;
+  @Nullable private final ZoneId defaultScheduleTimezone;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
 
@@ -147,7 +148,7 @@ public class EndpointGateEndpoint {
         throw new IllegalArgumentException(
             "At least one of scheduleStart or scheduleEnd is required when setting a schedule");
       }
-      ZoneId timezone = null;
+      ZoneId timezone = defaultScheduleTimezone;
       if (scheduleTimezone != null && !scheduleTimezone.isEmpty()) {
         timezone = ZoneId.of(scheduleTimezone);
       }
@@ -235,6 +236,8 @@ public class EndpointGateEndpoint {
    * @param scheduleProvider the mutable schedule provider used to look up and mutate schedules per
    *     gate
    * @param defaultEnabled the default-enabled value to include in responses
+   * @param defaultScheduleTimezone the global default timezone used when a schedule update does not
+   *     specify a timezone, or {@code null} to use the system default timezone
    * @param eventPublisher the publisher used to broadcast gate change events
    * @param clock the clock used to determine schedule active status in responses
    */
@@ -244,6 +247,7 @@ public class EndpointGateEndpoint {
       MutableConditionProvider conditionProvider,
       MutableScheduleProvider scheduleProvider,
       boolean defaultEnabled,
+      @Nullable ZoneId defaultScheduleTimezone,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
     this.provider = provider;
@@ -251,6 +255,7 @@ public class EndpointGateEndpoint {
     this.conditionProvider = conditionProvider;
     this.scheduleProvider = scheduleProvider;
     this.defaultEnabled = defaultEnabled;
+    this.defaultScheduleTimezone = defaultScheduleTimezone;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
   }

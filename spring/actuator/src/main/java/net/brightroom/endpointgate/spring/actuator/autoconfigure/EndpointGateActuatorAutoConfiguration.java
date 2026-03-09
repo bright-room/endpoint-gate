@@ -188,6 +188,7 @@ public class EndpointGateActuatorAutoConfiguration {
           conditionProvider,
           scheduleProvider,
           endpointGateProperties.defaultEnabled(),
+          endpointGateProperties.schedule().defaultTimezone(),
           eventPublisher,
           clock);
     }
@@ -316,6 +317,7 @@ public class EndpointGateActuatorAutoConfiguration {
           reactiveConditionProvider,
           reactiveScheduleProvider,
           endpointGateProperties.defaultEnabled(),
+          endpointGateProperties.schedule().defaultTimezone(),
           eventPublisher,
           clock);
     }

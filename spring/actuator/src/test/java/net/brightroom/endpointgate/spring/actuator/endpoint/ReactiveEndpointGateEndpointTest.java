@@ -65,6 +65,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -79,6 +80,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         new MutableInMemoryReactiveScheduleProvider(schedules),
         defaultEnabled,
+        null,
         eventPublisher,
         clock);
   }
@@ -247,6 +249,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             emptyScheduleProvider(),
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -511,6 +514,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             new MutableInMemoryReactiveScheduleProvider(Map.of("gate-a", schedule)),
             false,
+            null,
             eventPublisher,
             fixedClock);
 
@@ -557,6 +561,7 @@ class ReactiveEndpointGateEndpointTest {
         emptyConditionProvider(),
         emptyScheduleProvider(),
         false,
+        null,
         eventPublisher,
         clock);
   }
@@ -595,6 +600,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -618,6 +624,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -655,6 +662,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
@@ -680,6 +688,7 @@ class ReactiveEndpointGateEndpointTest {
             emptyConditionProvider(),
             scheduleProvider,
             false,
+            null,
             eventPublisher,
             clock);
 
