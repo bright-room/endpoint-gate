@@ -176,3 +176,142 @@ public Response handle(Request request) {
 - 正常系のコードがインデントされずに読めるため、可読性が大幅に向上する
 - 異常系が先頭にまとまることで、前提条件が一目で把握できる
 - CG-3（ネスト制限）の達成手段として最も効果的である
+
+---
+
+## CG-5: メソッドチェーンの禁止
+
+可読性の低下を招くため、メソッドチェーンの使用を禁止する。ただし、Builder パターンに対してはこの限りではない。
+
+### NG
+
+```java
+String text = DateTimeFormatter.RFC_1123_DATE_TIME.format(
+    scheduleException.retryAfter().atZone(ZoneOffset.UTC));
+```
+
+### OK
+
+```java
+Instant retryAfter = scheduleException.retryAfter();
+ZonedDateTime offsetRetryAfter = retryAfter.atZone(ZoneOffset.UTC);
+
+DateTimeFormatter formatter = DateTimeFormatter.RFC_1123_DATE_TIME;
+String text = formatter.format(offsetRetryAfter);
+```
+
+### 理由
+
+- メソッドチェーンはデバッグ時に中間値の確認が困難になる
+- 各ステップに名前を付けることで、処理の意図が明確になる
+
+---
+
+## CG-6: if/else を使う場合はメソッド抽出と早期リターン
+
+`if/else` による分岐をメソッド内にインラインで記述せず、専用メソッドに抽出して早期リターンパターンを適用すること。
+
+### NG
+
+```java
+public ResponseEntity<?> resolution(ServerHttpRequest request, EndpointGateAccessDeniedException e) {
+  HttpStatus status;
+  if (e instanceof EndpointGateScheduleInactiveException) {
+    status = HttpStatus.SERVICE_UNAVAILABLE;
+  } else {
+    status = HttpStatus.FORBIDDEN;
+  }
+  // ... status を使った後続処理
+}
+```
+
+### OK
+
+```java
+public ResponseEntity<?> resolution(ServerHttpRequest request, EndpointGateAccessDeniedException e) {
+  HttpStatus status = resolveStatus(e);
+  // ... status を使った後続処理
+}
+
+private HttpStatus resolveStatus(EndpointGateAccessDeniedException e) {
+  if (e instanceof EndpointGateScheduleInactiveException) {
+    return HttpStatus.SERVICE_UNAVAILABLE;
+  }
+  return HttpStatus.FORBIDDEN;
+}
+```
+
+### 理由
+
+- `if/else` をメソッドに切り出すことで、呼び出し元の処理フローがフラットになる
+- 抽出先メソッドでは `else` が不要になり、早期リターン（CG-4）が自然に適用できる
+- 分岐のロジックに名前が付くため、意図が明確になる
+
+---
+
+## CG-7: 条件式での `&&` `||` の禁止
+
+`if` 文の条件式で `&&` や `||` を使用せず、条件を個別の `if` 文に分割すること。
+
+### NG
+
+```java
+if (e instanceof EndpointGateScheduleInactiveException scheduleException
+    && scheduleException.retryAfter() != null) {
+  // Retry-After ヘッダーの設定
+}
+```
+
+### OK
+
+```java
+if (!(e instanceof EndpointGateScheduleInactiveException scheduleException)) {
+  return builder.body(HtmlResponseBuilder.buildHtml(e));
+}
+if (scheduleException.retryAfter() == null) {
+  return builder.body(HtmlResponseBuilder.buildHtml(e));
+}
+// Retry-After ヘッダーの設定
+```
+
+### 理由
+
+- 条件を分割することで、各条件の意図が明確になる
+- デバッグ時にどの条件で分岐したかを特定しやすくなる
+- 早期リターン（CG-4）との組み合わせにより、ネストを浅く保てる
+
+---
+
+## CG-8: if/else if/else チェーンの禁止
+
+`if/else if/else` チェーンが必要になった場合は、仕様設計から見直すこと。ただし、`enum` に対する分岐は網羅性が保証される `switch` 式を使用する。
+
+### NG
+
+```java
+if (type == ResponseType.JSON) {
+  return jsonResponse();
+} else if (type == ResponseType.HTML) {
+  return htmlResponse();
+} else if (type == ResponseType.PLAIN_TEXT) {
+  return plainTextResponse();
+} else {
+  throw new IllegalArgumentException("Unknown type");
+}
+```
+
+### OK (enum には switch を使用)
+
+```java
+return switch (type) {
+  case JSON -> jsonResponse();
+  case HTML -> htmlResponse();
+  case PLAIN_TEXT -> plainTextResponse();
+};
+```
+
+### 理由
+
+- `if/else if/else` チェーンは分岐の追加漏れや順序依存のバグを招きやすい
+- `enum` に対する `switch` 式はコンパイラが網羅性を検証するため、安全性が高い
+- `if/else if/else` が必要になる状況自体が、型の設計やポリモーフィズムの活用で解消できることが多い
