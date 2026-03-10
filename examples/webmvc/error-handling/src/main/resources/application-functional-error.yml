@@ -1,0 +1,4 @@
+endpoint-gate:
+  gates:
+    functional-gated:
+      enabled: false
