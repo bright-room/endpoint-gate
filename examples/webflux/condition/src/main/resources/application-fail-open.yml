@@ -1,0 +1,3 @@
+endpoint-gate:
+  condition:
+    fail-on-error: false

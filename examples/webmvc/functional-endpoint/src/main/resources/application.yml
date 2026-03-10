@@ -7,3 +7,7 @@ endpoint-gate:
       rollout: 50
     experimental-api:
       enabled: false
+    internal-api:
+      enabled: true
+    preview-feature:
+      enabled: true

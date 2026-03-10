@@ -18,4 +18,12 @@ public class FeatureHandler {
   public ServerResponse experimental(ServerRequest request) {
     return ServerResponse.ok().body("experimental-api: this endpoint is under development.");
   }
+
+  public ServerResponse internal(ServerRequest request) {
+    return ServerResponse.ok().body("internal-api: internal data accessible to internal clients.");
+  }
+
+  public ServerResponse preview(ServerRequest request) {
+    return ServerResponse.ok().body("preview-feature: preview feature for early adopters.");
+  }
 }
