@@ -80,7 +80,7 @@ class EndpointGateInterceptorTest {
 
   private EndpointGate endpointGateAnnotation(String value) {
     EndpointGate annotation = mock(EndpointGate.class);
-    when(annotation.value()).thenReturn(value);
+    when(annotation.value()).thenReturn(new String[] {value});
     return annotation;
   }
 

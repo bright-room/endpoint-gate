@@ -125,7 +125,7 @@ class EndpointGateHandlerFilterFunctionTest {
 
   @Test
   void of_throwsIllegalArgumentException_whenGateIdIsNull() {
-    assertThatThrownBy(() -> filterFunction.of(null))
+    assertThatThrownBy(() -> filterFunction.of((String) null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("null or blank");
   }
@@ -138,15 +138,15 @@ class EndpointGateHandlerFilterFunctionTest {
   }
 
   @Test
-  void of_throwsIllegalArgumentException_whenRolloutIsNegative() {
-    assertThatThrownBy(() -> filterFunction.of("my-gate", -1))
+  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsNegative() {
+    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", -1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rollout must be between 0 and 100");
   }
 
   @Test
-  void of_throwsIllegalArgumentException_whenRolloutIsOver100() {
-    assertThatThrownBy(() -> filterFunction.of("my-gate", 101))
+  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsOver100() {
+    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", 101))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rollout must be between 0 and 100");
   }
@@ -258,7 +258,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.of("my-gate", "headers['X-Beta'] != null");
+        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);
@@ -281,7 +281,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(Mono.just(deniedResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.of("my-gate", "headers['X-Beta'] != null");
+        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
     verifyNoInteractions(next);
@@ -304,7 +304,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(Mono.just(deniedResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", "headers['X-Beta'] != null", 50);
+        filterFunctionWithRollout.withFallbacks("my-gate", "headers['X-Beta'] != null", 50);
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
     verifyNoInteractions(rolloutStrategy);
@@ -328,7 +328,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);
@@ -352,7 +352,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(Mono.just(deniedResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
     verifyNoInteractions(next);
@@ -370,7 +370,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);

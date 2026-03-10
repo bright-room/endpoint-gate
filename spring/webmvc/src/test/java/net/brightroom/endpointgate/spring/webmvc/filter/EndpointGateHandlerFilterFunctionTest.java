@@ -128,7 +128,7 @@ class EndpointGateHandlerFilterFunctionTest {
 
   @Test
   void of_throwsIllegalArgumentException_whenGateIdIsNull() {
-    assertThatThrownBy(() -> filterFunction.of(null))
+    assertThatThrownBy(() -> filterFunction.of((String) null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("null or blank");
   }
@@ -141,15 +141,15 @@ class EndpointGateHandlerFilterFunctionTest {
   }
 
   @Test
-  void of_throwsIllegalArgumentException_whenRolloutIsNegative() {
-    assertThatThrownBy(() -> filterFunction.of("my-gate", -1))
+  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsNegative() {
+    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", -1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rollout must be between 0 and 100");
   }
 
   @Test
-  void of_throwsIllegalArgumentException_whenRolloutIsOver100() {
-    assertThatThrownBy(() -> filterFunction.of("my-gate", 101))
+  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsOver100() {
+    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", 101))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("rollout must be between 0 and 100");
   }
@@ -224,7 +224,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -252,7 +252,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(deniedResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);
@@ -276,7 +276,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -303,7 +303,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 50);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -340,7 +340,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.of("my-gate", "headers['X-Beta'] != null");
+        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -368,7 +368,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(deniedResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.of("my-gate", "headers['X-Beta'] != null");
+        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);
@@ -418,7 +418,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(deniedResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.of("my-gate", 30);
+        filterFunctionWithRollout.withRolloutFallback("my-gate", 30);
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);

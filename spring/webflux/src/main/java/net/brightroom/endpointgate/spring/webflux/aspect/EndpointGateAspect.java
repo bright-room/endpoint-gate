@@ -61,35 +61,12 @@ public class EndpointGateAspect {
       return joinPoint.proceed();
     }
 
-    validateAnnotation(annotation);
-
-    String gateId = annotation.value();
+    String[] gateIds = annotation.value();
+    validateGateIds(gateIds);
 
     Class<?> returnType = ((MethodSignature) joinPoint.getSignature()).getReturnType();
 
-    Mono<AccessDecision> decisionMono =
-        Mono.deferContextual(
-            ctx -> {
-              ServerWebExchange exchange = ctx.get(ServerWebExchange.class);
-              return Mono.zip(
-                      conditionProvider.getCondition(gateId).defaultIfEmpty(""),
-                      rolloutPercentageProvider.getRolloutPercentage(gateId).defaultIfEmpty(100),
-                      contextResolver
-                          .resolve(exchange.getRequest())
-                          .map(java.util.Optional::of)
-                          .defaultIfEmpty(java.util.Optional.empty()))
-                  .flatMap(
-                      tuple -> {
-                        EvaluationContext evalCtx =
-                            new EvaluationContext(
-                                gateId,
-                                tuple.getT1(),
-                                tuple.getT2(),
-                                ServerHttpConditionVariables.build(exchange.getRequest()),
-                                () -> tuple.getT3().orElse(null));
-                        return pipeline.evaluate(evalCtx);
-                      });
-            });
+    Mono<AccessDecision> decisionMono = buildDecisionMono(gateIds);
 
     if (Mono.class.isAssignableFrom(returnType)) {
       return decisionMono.flatMap(
@@ -116,6 +93,39 @@ public class EndpointGateAspect {
             + ((MethodSignature) joinPoint.getSignature()).getMethod().getName()
             + "' requires a reactive return type (Mono or Flux). "
             + "Non-reactive return types are not supported.");
+  }
+
+  private Mono<AccessDecision> buildDecisionMono(String[] gateIds) {
+    return Mono.deferContextual(
+        ctx -> {
+          ServerWebExchange exchange = ctx.get(ServerWebExchange.class);
+          return Flux.fromArray(gateIds)
+              .concatMap(gateId -> evaluateSingleGate(exchange, gateId))
+              .filter(decision -> decision instanceof AccessDecision.Denied)
+              .next()
+              .defaultIfEmpty(AccessDecision.allowed());
+        });
+  }
+
+  private Mono<AccessDecision> evaluateSingleGate(ServerWebExchange exchange, String gateId) {
+    return Mono.zip(
+            conditionProvider.getCondition(gateId).defaultIfEmpty(""),
+            rolloutPercentageProvider.getRolloutPercentage(gateId).defaultIfEmpty(100),
+            contextResolver
+                .resolve(exchange.getRequest())
+                .map(java.util.Optional::of)
+                .defaultIfEmpty(java.util.Optional.empty()))
+        .flatMap(
+            tuple -> {
+              EvaluationContext evalCtx =
+                  new EvaluationContext(
+                      gateId,
+                      tuple.getT1(),
+                      tuple.getT2(),
+                      ServerHttpConditionVariables.build(exchange.getRequest()),
+                      () -> tuple.getT3().orElse(null));
+              return pipeline.evaluate(evalCtx);
+            });
   }
 
   @SuppressWarnings("unchecked")
@@ -148,11 +158,18 @@ public class EndpointGateAspect {
     return AnnotationUtils.findAnnotation(joinPoint.getTarget().getClass(), EndpointGate.class);
   }
 
-  private void validateAnnotation(EndpointGate annotation) {
-    if (annotation.value().isEmpty()) {
+  private void validateGateIds(String[] gateIds) {
+    if (gateIds.length == 0) {
       throw new IllegalStateException(
-          "@EndpointGate must specify a non-empty value. "
+          "@EndpointGate must specify at least one non-empty value. "
               + "An empty value causes fail-open behavior and allows access unconditionally.");
+    }
+    for (String gateId : gateIds) {
+      if (gateId.isEmpty()) {
+        throw new IllegalStateException(
+            "@EndpointGate must specify a non-empty value. "
+                + "An empty value causes fail-open behavior and allows access unconditionally.");
+      }
     }
   }
 

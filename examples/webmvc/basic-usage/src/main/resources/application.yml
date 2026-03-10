@@ -16,3 +16,7 @@ endpoint-gate:
       enabled: false
     html-demo:
       enabled: false
+    feature-new-dashboard:
+      enabled: true
+    beta-users-only:
+      enabled: true

@@ -16,10 +16,16 @@ import java.lang.annotation.Target;
  * <p>Usage examples:
  *
  * <pre>{@code
- * // Method level
+ * // Method level (single gate)
  * {@literal @}EndpointGate("new-api")
  * public void newFeature() {
  *     // This method will only be accessible if "new-api" gate is enabled
+ * }
+ *
+ * // Multiple gates (AND semantics)
+ * {@literal @}EndpointGate({"feature-new-dashboard", "beta-users-only"})
+ * public void restrictedFeature() {
+ *     // Accessible only when both gates are enabled
  * }
  *
  * // Class level
@@ -46,16 +52,17 @@ import java.lang.annotation.Target;
 public @interface EndpointGate {
 
   /**
-   * Specifies the gate associated with a method or class. The value represents the unique
-   * identifier of the gate that determines whether the annotated method or class is accessible or
-   * enabled.
+   * Specifies the gates associated with a method or class. The values represent the unique
+   * identifiers of the gates that determine whether the annotated method or class is accessible.
+   * All specified gates must permit access (AND semantics); if any gate denies access, the request
+   * is rejected.
    *
    * <p>This element is required. {@code @EndpointGate} without a value will result in a
-   * compile-time error. An explicit empty string (e.g., {@code @EndpointGate("")}) is also not
-   * permitted and will cause an {@link IllegalStateException} to be thrown at request time by the
-   * interceptor.
+   * compile-time error. An explicit empty string (e.g., {@code @EndpointGate("")}) or an empty
+   * array (e.g., {@code @EndpointGate({})}) is also not permitted and will cause an {@link
+   * IllegalStateException} to be thrown at request time by the interceptor.
    *
-   * @return the identifier of the gate; must be a non-empty string
+   * @return the identifiers of the gates; must contain at least one non-empty string
    */
-  String value();
+  String[] value();
 }

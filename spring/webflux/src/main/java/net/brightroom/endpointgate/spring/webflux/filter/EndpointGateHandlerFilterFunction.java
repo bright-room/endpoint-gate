@@ -10,14 +10,15 @@ import net.brightroom.endpointgate.spring.webflux.context.ReactiveEndpointGateCo
 import net.brightroom.endpointgate.spring.webflux.resolution.handlerfilter.AccessDeniedHandlerFilterResolution;
 import org.springframework.web.reactive.function.server.HandlerFilterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
  * A factory for {@link HandlerFilterFunction} that applies endpoint gate access control to
  * Functional Endpoints.
  *
- * <p>Use {@link #of(String)} to create a {@link HandlerFilterFunction} for a specific gate ID and
- * apply it to a {@link org.springframework.web.reactive.function.server.RouterFunction}:
+ * <p>Use {@link #of(String...)} to create a {@link HandlerFilterFunction} for one or more gate IDs
+ * and apply it to a {@link org.springframework.web.reactive.function.server.RouterFunction}:
  *
  * <pre>{@code
  * @Bean
@@ -29,13 +30,19 @@ import reactor.core.publisher.Mono;
  * }
  * }</pre>
  *
+ * <p>Multiple gates can be specified for AND semantics:
+ *
+ * <pre>{@code
+ * .filter(endpointGateFilter.of("gate-a", "gate-b"))
+ * }</pre>
+ *
  * <p>When the gate is disabled, the filter delegates to {@link AccessDeniedHandlerFilterResolution}
  * to build the denied response without invoking the handler. The default response format follows
  * {@code endpoint-gate.response.type} configuration, and can be customized by providing a custom
  * {@link AccessDeniedHandlerFilterResolution} bean.
  *
- * <p>Use {@link #of(String, int)} to enable gradual rollout for functional endpoints with a
- * fallback rollout percentage.
+ * <p>Use {@link #withRolloutFallback(String, int)} to enable gradual rollout for functional
+ * endpoints with a fallback rollout percentage.
  */
 public class EndpointGateHandlerFilterFunction {
 
@@ -46,16 +53,33 @@ public class EndpointGateHandlerFilterFunction {
   private final ReactiveEndpointGateContextResolver contextResolver;
 
   /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified gate.
+   * Creates a {@link HandlerFilterFunction} that guards the route with the specified endpoint gates
+   * using AND semantics. All specified gates must permit access; if any gate denies access, the
+   * request is rejected.
    *
-   * <p>Condition and rollout percentage are resolved from the configured providers.
+   * <p>Condition and rollout percentage for each gate are resolved from the configured providers.
    *
-   * @param gateId the identifier of the gate to check; must not be null or blank
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the gate
-   * @throws IllegalArgumentException if {@code gateId} is null or blank
+   * @param gateIds the identifiers of the endpoint gates to check; must not be null or empty, and
+   *     each element must not be null or blank
+   * @return a {@link HandlerFilterFunction} that allows or denies access based on all gates
+   * @throws IllegalArgumentException if {@code gateIds} is null, empty, or contains null/blank
+   *     elements
    */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> of(String gateId) {
-    return of(gateId, "", 100);
+  public HandlerFilterFunction<ServerResponse, ServerResponse> of(String... gateIds) {
+    validateGateIds(gateIds);
+    return (request, next) ->
+        Flux.fromArray(gateIds)
+            .concatMap(gateId -> evaluateSingleGate(request, gateId))
+            .filter(decision -> decision instanceof AccessDecision.Denied)
+            .next()
+            .defaultIfEmpty(AccessDecision.allowed())
+            .flatMap(
+                decision -> {
+                  if (decision instanceof AccessDecision.Denied denied) {
+                    return resolution.resolve(request, denied.toException());
+                  }
+                  return next.handle(request);
+                });
   }
 
   /**
@@ -72,9 +96,9 @@ public class EndpointGateHandlerFilterFunction {
    *     condition
    * @throws IllegalArgumentException if {@code gateId} is null or blank
    */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> of(
+  public HandlerFilterFunction<ServerResponse, ServerResponse> withConditionFallback(
       String gateId, String conditionFallback) {
-    return of(gateId, conditionFallback, 100);
+    return withFallbacks(gateId, conditionFallback, 100);
   }
 
   /**
@@ -92,9 +116,9 @@ public class EndpointGateHandlerFilterFunction {
    * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
    *     rolloutFallback} is not between 0 and 100
    */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> of(
+  public HandlerFilterFunction<ServerResponse, ServerResponse> withRolloutFallback(
       String gateId, int rolloutFallback) {
-    return of(gateId, "", rolloutFallback);
+    return withFallbacks(gateId, "", rolloutFallback);
   }
 
   /**
@@ -117,7 +141,7 @@ public class EndpointGateHandlerFilterFunction {
    * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
    *     rolloutFallback} is not between 0 and 100
    */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> of(
+  public HandlerFilterFunction<ServerResponse, ServerResponse> withFallbacks(
       String gateId, String conditionFallback, int rolloutFallback) {
     if (gateId == null) {
       throw new IllegalArgumentException(
@@ -165,6 +189,53 @@ public class EndpointGateHandlerFilterFunction {
                   }
                   return next.handle(request);
                 });
+  }
+
+  private Mono<AccessDecision> evaluateSingleGate(
+      org.springframework.web.reactive.function.server.ServerRequest request, String gateId) {
+    return Mono.zip(
+            conditionProvider.getCondition(gateId).defaultIfEmpty(""),
+            rolloutPercentageProvider.getRolloutPercentage(gateId).defaultIfEmpty(100),
+            contextResolver
+                .resolve(request.exchange().getRequest())
+                .map(java.util.Optional::of)
+                .defaultIfEmpty(java.util.Optional.empty()))
+        .flatMap(
+            tuple -> {
+              EvaluationContext evalCtx =
+                  new EvaluationContext(
+                      gateId,
+                      tuple.getT1(),
+                      tuple.getT2(),
+                      ServerHttpConditionVariables.build(request.exchange().getRequest()),
+                      () -> tuple.getT3().orElse(null));
+              return pipeline.evaluate(evalCtx);
+            });
+  }
+
+  private void validateGateIds(String[] gateIds) {
+    if (gateIds == null) {
+      throw new IllegalArgumentException(
+          "gateIds must not be null or empty. "
+              + "An empty value causes fail-open behavior and allows access unconditionally.");
+    }
+    if (gateIds.length == 0) {
+      throw new IllegalArgumentException(
+          "gateIds must not be null or empty. "
+              + "An empty value causes fail-open behavior and allows access unconditionally.");
+    }
+    for (String gateId : gateIds) {
+      if (gateId == null) {
+        throw new IllegalArgumentException(
+            "gateId must not be null or blank. "
+                + "A blank value causes fail-open behavior and allows access unconditionally.");
+      }
+      if (gateId.isBlank()) {
+        throw new IllegalArgumentException(
+            "gateId must not be null or blank. "
+                + "A blank value causes fail-open behavior and allows access unconditionally.");
+      }
+    }
   }
 
   /**

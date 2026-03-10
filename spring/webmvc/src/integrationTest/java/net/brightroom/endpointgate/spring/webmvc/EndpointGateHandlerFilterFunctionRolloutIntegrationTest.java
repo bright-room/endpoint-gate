@@ -29,10 +29,10 @@ import org.springframework.web.servlet.function.ServerResponse;
  *   <li>Custom {@link EndpointGateContextResolver} bean is respected via
  *       {@code @ConditionalOnMissingBean}, enabling sticky rollout.
  *   <li>Rollout decision is deterministic for a fixed user identifier.
- *   <li>{@link EndpointGateHandlerFilterFunction#of(String, int)} correctly applies rollout control
- *       via {@code ServerRequest.servletRequest()} in the MVC pipeline.
- *   <li>{@link EndpointGateHandlerFilterFunction#of(String, int)} uses the {@code rolloutFallback}
- *       argument when {@code rollout} is not configured in YAML.
+ *   <li>{@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)} correctly
+ *       applies rollout control via {@code ServerRequest.servletRequest()} in the MVC pipeline.
+ *   <li>{@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)} uses the {@code
+ *       rolloutFallback} argument when {@code rollout} is not configured in YAML.
  * </ul>
  */
 @WebMvcTest(
@@ -67,7 +67,7 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         EndpointGateHandlerFilterFunction endpointGateFilter) {
       return route()
           .GET("/functional/rollout-test", req -> ServerResponse.ok().body("Allowed"))
-          .filter(endpointGateFilter.of("rollout-gate", 50))
+          .filter(endpointGateFilter.withRolloutFallback("rollout-gate", 50))
           .build();
     }
 
@@ -76,7 +76,7 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         EndpointGateHandlerFilterFunction endpointGateFilter) {
       return route()
           .GET("/functional/rollout-fallback-test", req -> ServerResponse.ok().body("Allowed"))
-          .filter(endpointGateFilter.of("no-rollout-gate", 0))
+          .filter(endpointGateFilter.withRolloutFallback("no-rollout-gate", 0))
           .build();
     }
   }

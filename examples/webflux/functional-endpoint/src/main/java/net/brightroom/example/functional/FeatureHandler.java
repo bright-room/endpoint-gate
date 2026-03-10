@@ -27,4 +27,8 @@ public class FeatureHandler {
   public Mono<ServerResponse> preview(ServerRequest request) {
     return ServerResponse.ok().bodyValue("preview-feature: you are in the preview group!");
   }
+
+  public Mono<ServerResponse> restricted(ServerRequest request) {
+    return ServerResponse.ok().bodyValue("restricted: accessible only when all gates are enabled.");
+  }
 }

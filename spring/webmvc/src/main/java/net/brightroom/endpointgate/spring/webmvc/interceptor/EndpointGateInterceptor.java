@@ -19,8 +19,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
  *
  * <p>Checks the {@link net.brightroom.endpointgate.core.annotation.EndpointGate} annotation on the
  * handler method first, then on the handler class. Method-level annotations take priority over
- * class-level annotations. If the gate is disabled, an {@link EndpointGateAccessDeniedException} is
- * thrown and handled by {@link
+ * class-level annotations. If the gate is disabled, an {@link
+ * net.brightroom.endpointgate.core.exception.EndpointGateAccessDeniedException} is thrown and
+ * handled by {@link
  * net.brightroom.endpointgate.spring.webmvc.exception.EndpointGateExceptionHandler}.
  */
 public class EndpointGateInterceptor implements HandlerInterceptor {
@@ -67,13 +68,15 @@ public class EndpointGateInterceptor implements HandlerInterceptor {
       return true;
     }
 
-    validateAnnotation(annotation);
+    String[] gateIds = annotation.value();
+    validateGateIds(gateIds);
 
-    EvaluationContext context = buildContext(request, annotation);
-    AccessDecision decision = pipeline.evaluate(context);
-
-    if (decision instanceof AccessDecision.Denied denied) {
-      throw denied.toException();
+    for (String gateId : gateIds) {
+      EvaluationContext context = buildContext(request, gateId);
+      AccessDecision decision = pipeline.evaluate(context);
+      if (decision instanceof AccessDecision.Denied denied) {
+        throw denied.toException();
+      }
     }
     return true;
   }
@@ -86,16 +89,22 @@ public class EndpointGateInterceptor implements HandlerInterceptor {
     return handlerMethod.getBeanType().getAnnotation(EndpointGate.class);
   }
 
-  private void validateAnnotation(EndpointGate annotation) {
-    if (annotation.value().isEmpty()) {
+  private void validateGateIds(String[] gateIds) {
+    if (gateIds.length == 0) {
       throw new IllegalStateException(
-          "@EndpointGate must specify a non-empty value. "
+          "@EndpointGate must specify at least one non-empty value. "
               + "An empty value causes fail-open behavior and allows access unconditionally.");
+    }
+    for (String gateId : gateIds) {
+      if (gateId.isEmpty()) {
+        throw new IllegalStateException(
+            "@EndpointGate must specify a non-empty value. "
+                + "An empty value causes fail-open behavior and allows access unconditionally.");
+      }
     }
   }
 
-  private EvaluationContext buildContext(HttpServletRequest request, EndpointGate annotation) {
-    String gateId = annotation.value();
+  private EvaluationContext buildContext(HttpServletRequest request, String gateId) {
     String condition = conditionProvider.getCondition(gateId).orElse("");
     int rollout = rolloutPercentageProvider.getRolloutPercentage(gateId).orElse(100);
     return new EvaluationContext(

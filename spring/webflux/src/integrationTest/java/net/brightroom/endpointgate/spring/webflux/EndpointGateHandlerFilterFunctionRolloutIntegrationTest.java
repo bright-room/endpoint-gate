@@ -27,15 +27,16 @@ import reactor.core.publisher.Mono;
  *   <li>Custom {@link ReactiveEndpointGateContextResolver} bean is respected via
  *       {@code @ConditionalOnMissingBean}, enabling sticky rollout.
  *   <li>Rollout decision is deterministic for a fixed user identifier.
- *   <li>{@link EndpointGateHandlerFilterFunction#of(String, int)} correctly applies rollout control
- *       via {@code ServerRequest.exchange().getRequest()} in the real Netty pipeline.
+ *   <li>{@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)} correctly
+ *       applies rollout control via {@code ServerRequest.exchange().getRequest()} in the real Netty
+ *       pipeline.
  * </ul>
  *
  * <p>A real Netty server is used (instead of {@code @WebFluxTest}) to ensure the full Spring
  * WebFlux pipeline — including context propagation of {@code ServerWebExchange} — is exercised.
  *
- * <p>Also verifies that {@link EndpointGateHandlerFilterFunction#of(String, int)} uses the {@code
- * rolloutFallback} argument when {@code rollout} is not configured in YAML.
+ * <p>Also verifies that {@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)}
+ * uses the {@code rolloutFallback} argument when {@code rollout} is not configured in YAML.
  */
 @SpringBootTest(
     webEnvironment = WebEnvironment.RANDOM_PORT,
@@ -64,7 +65,7 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         EndpointGateHandlerFilterFunction endpointGateFilter) {
       return route()
           .GET("/functional/rollout-test", req -> ServerResponse.ok().bodyValue("Allowed"))
-          .filter(endpointGateFilter.of("rollout-feature", 50))
+          .filter(endpointGateFilter.withRolloutFallback("rollout-feature", 50))
           .build();
     }
 
@@ -73,7 +74,7 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         EndpointGateHandlerFilterFunction endpointGateFilter) {
       return route()
           .GET("/functional/rollout-fallback-test", req -> ServerResponse.ok().bodyValue("Allowed"))
-          .filter(endpointGateFilter.of("no-rollout-feature", 0))
+          .filter(endpointGateFilter.withRolloutFallback("no-rollout-feature", 0))
           .build();
     }
   }
