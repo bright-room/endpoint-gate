@@ -1,0 +1,13 @@
+endpoint-gate:
+  condition:
+    fail-on-error: true # デフォルト: SpEL 評価エラー時はアクセス拒否 (fail-closed)
+  gates:
+    internal-api:
+      enabled: true
+      condition: "headers['X-Internal-Token'] == 'secret-token'"
+    beta-feature:
+      enabled: true
+      condition: "params['beta'] == 'true'"
+    admin-panel:
+      enabled: true
+      condition: "headers['X-User-Role'] == 'admin'"

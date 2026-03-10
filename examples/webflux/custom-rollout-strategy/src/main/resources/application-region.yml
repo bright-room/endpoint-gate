@@ -1,0 +1,3 @@
+# リージョンベースのロールアウト戦略を有効化
+# X-Region ヘッダーでリージョンを指定すると、リージョンごとの重みに基づいてロールアウト判定が行われる
+# 例: us-east (weight=0) + rollout=60 → 許可、ap-northeast (weight=80) + rollout=60 → 拒否

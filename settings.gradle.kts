@@ -48,6 +48,8 @@ include(
     "examples:webmvc:health-indicator",
     "examples:webmvc:custom-rollout-strategy",
     "examples:webmvc:event-listener",
+    "examples:webmvc:schedule",
+    "examples:webmvc:condition",
     "examples:webflux:fail-behavior",
     "examples:webflux:error-handling",
     "examples:webflux:custom-provider",
@@ -57,4 +59,7 @@ include(
     "examples:webflux:basic-usage",
     "examples:webflux:functional-endpoint",
     "examples:webflux:rollout",
+    "examples:webflux:event-listener",
+    "examples:webflux:custom-rollout-strategy",
+    "examples:webflux:schedule",
 )
