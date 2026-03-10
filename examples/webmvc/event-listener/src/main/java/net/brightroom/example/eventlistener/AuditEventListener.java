@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateChangedEvent;
 import net.brightroom.endpointgate.spring.core.event.EndpointGateRemovedEvent;
+import net.brightroom.endpointgate.spring.core.event.EndpointGateScheduleChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -30,6 +31,16 @@ public class AuditEventListener {
   @EventListener
   public void onRemoved(EndpointGateRemovedEvent event) {
     String entry = String.format("[%s] REMOVED: gate=%s", Instant.now(), event.gateId());
+    auditLog.add(entry);
+    log.info(entry);
+  }
+
+  @EventListener
+  public void onScheduleChanged(EndpointGateScheduleChangedEvent event) {
+    String entry =
+        String.format(
+            "[%s] Schedule changed: id=%s, schedule=%s",
+            Instant.now(), event.gateId(), event.schedule());
     auditLog.add(entry);
     log.info(entry);
   }
