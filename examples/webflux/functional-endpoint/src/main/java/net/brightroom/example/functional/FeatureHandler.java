@@ -19,4 +19,12 @@ public class FeatureHandler {
   public Mono<ServerResponse> experimental(ServerRequest request) {
     return ServerResponse.ok().bodyValue("experimental-api: this endpoint is under development.");
   }
+
+  public Mono<ServerResponse> internal(ServerRequest request) {
+    return ServerResponse.ok().bodyValue("internal-api: this endpoint is for internal use only.");
+  }
+
+  public Mono<ServerResponse> preview(ServerRequest request) {
+    return ServerResponse.ok().bodyValue("preview-feature: you are in the preview group!");
+  }
 }
