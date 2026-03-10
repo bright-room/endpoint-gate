@@ -1,6 +1,6 @@
 package net.brightroom.example.condition;
 
-import net.brightroom.endpointgate.core.EndpointGate;
+import net.brightroom.endpointgate.core.annotation.EndpointGate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
