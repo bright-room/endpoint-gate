@@ -1,0 +1,21 @@
+endpoint-gate:
+  schedule:
+    default-timezone: Asia/Tokyo
+  gates:
+    maintenance-window:
+      enabled: true
+      schedule:
+        start: "2026-03-10T02:00:00"
+        end: "2026-03-10T06:00:00"
+    campaign:
+      enabled: true
+      schedule:
+        start: "2026-03-01T00:00:00"
+        end: "2026-03-31T23:59:59"
+        timezone: Asia/Tokyo
+    business-hours:
+      enabled: true
+      schedule:
+        start: "2026-01-01T09:00:00"
+        end: "2026-12-31T18:00:00"
+        timezone: America/New_York
