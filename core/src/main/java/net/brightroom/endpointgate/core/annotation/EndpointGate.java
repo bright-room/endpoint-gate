@@ -60,7 +60,7 @@ public @interface EndpointGate {
    * <p>This element is required. {@code @EndpointGate} without a value will result in a
    * compile-time error. An explicit empty string (e.g., {@code @EndpointGate("")}) or an empty
    * array (e.g., {@code @EndpointGate({})}) is also not permitted and will cause an {@link
-   * IllegalStateException} to be thrown at request time by the interceptor.
+   * IllegalArgumentException} to be thrown at request time by the interceptor.
    *
    * @return the identifiers of the gates; must contain at least one non-empty string
    */

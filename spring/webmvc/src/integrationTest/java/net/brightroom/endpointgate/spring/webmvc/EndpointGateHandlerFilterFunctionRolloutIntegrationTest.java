@@ -77,20 +77,24 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
 
   @Test
   void rollout_returnsDeterministicResult_forFixedUserId() throws Exception {
-    ResultMatcher expected =
-        IN_ROLLOUT_50
-            ? MockMvcResultMatchers.status().isOk()
-            : MockMvcResultMatchers.status().isForbidden();
+    ResultMatcher expected;
+    if (IN_ROLLOUT_50) {
+      expected = MockMvcResultMatchers.status().isOk();
+    } else {
+      expected = MockMvcResultMatchers.status().isForbidden();
+    }
     mockMvc.perform(MockMvcRequestBuilders.get("/functional/rollout-test")).andExpect(expected);
   }
 
   @Test
   void rollout_sameUserAlwaysGetsSameResult() throws Exception {
     // Call twice — result must be identical (deterministic hashing)
-    ResultMatcher expected =
-        IN_ROLLOUT_50
-            ? MockMvcResultMatchers.status().isOk()
-            : MockMvcResultMatchers.status().isForbidden();
+    ResultMatcher expected;
+    if (IN_ROLLOUT_50) {
+      expected = MockMvcResultMatchers.status().isOk();
+    } else {
+      expected = MockMvcResultMatchers.status().isForbidden();
+    }
     mockMvc.perform(MockMvcRequestBuilders.get("/functional/rollout-test")).andExpect(expected);
     mockMvc.perform(MockMvcRequestBuilders.get("/functional/rollout-test")).andExpect(expected);
   }

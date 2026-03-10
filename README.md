@@ -119,6 +119,45 @@ class UserController {
 }
 ```
 
+## Multiple Gates (AND Semantics)
+
+You can specify multiple gate IDs in a single `@EndpointGate` annotation. All specified gates must permit access — if any gate denies access, the request is rejected with `403 Forbidden`.
+
+```java
+// All gates must be enabled for the endpoint to be accessible
+@GetMapping("/dashboard")
+@EndpointGate({"feature-new-dashboard", "beta-users-only"})
+String dashboard() {
+  return "Welcome to the new dashboard!";
+}
+```
+
+For functional endpoints, pass multiple gate IDs to `of()`:
+
+```java
+// Spring MVC functional endpoint
+@Bean
+RouterFunction<ServerResponse> routes(EndpointGateHandlerFilterFunction endpointGateFilter) {
+    return route()
+        .GET("/dashboard", handler::handle)
+        .filter(endpointGateFilter.of("feature-new-dashboard", "beta-users-only"))
+        .build();
+}
+```
+
+```java
+// Spring WebFlux functional endpoint
+@Bean
+RouterFunction<ServerResponse> routes(EndpointGateHandlerFilterFunction endpointGateFilter) {
+    return route()
+        .GET("/dashboard", handler::handle)
+        .filter(endpointGateFilter.of("feature-new-dashboard", "beta-users-only"))
+        .build();
+}
+```
+
+The gates are evaluated sequentially. As soon as one gate denies access, evaluation short-circuits and the request is rejected.
+
 ## Change the source destination for gate management
 
 By default, gate management can be set in the configuration file, but it is also possible to change the source destination.

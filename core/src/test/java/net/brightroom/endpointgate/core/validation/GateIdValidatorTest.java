@@ -52,4 +52,11 @@ class GateIdValidatorTest {
         .isThrownBy(() -> GateIdValidator.validateGateIds(new String[] {"  "}))
         .withMessageContaining("null or blank");
   }
+
+  @Test
+  void validateGateIds_throwsIllegalArgumentException_whenDuplicateGateIds() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> GateIdValidator.validateGateIds(new String[] {"gate-a", "gate-a"}))
+        .withMessageContaining("duplicates");
+  }
 }
