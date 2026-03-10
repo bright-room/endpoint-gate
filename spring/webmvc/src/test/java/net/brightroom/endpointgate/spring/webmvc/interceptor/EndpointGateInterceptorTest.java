@@ -1,6 +1,5 @@
 package net.brightroom.endpointgate.spring.webmvc.interceptor;
 
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -80,8 +79,63 @@ class EndpointGateInterceptorTest {
 
   private EndpointGate endpointGateAnnotation(String value) {
     EndpointGate annotation = mock(EndpointGate.class);
-    when(annotation.value()).thenReturn(value);
+    when(annotation.value()).thenReturn(new String[] {value});
     return annotation;
+  }
+
+  // --- validateGateIds ---
+
+  @Test
+  void preHandle_throwsIllegalArgumentException_whenEndpointGateValueIsEmptyArray() {
+    EndpointGateInterceptor interceptor = buildInterceptor();
+    EndpointGate annotation = mock(EndpointGate.class);
+    when(annotation.value()).thenReturn(new String[] {});
+    HandlerMethod handlerMethod = handlerMethodWithAnnotation(annotation);
+
+    assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or empty");
+  }
+
+  // --- multipleGates ---
+
+  @Test
+  void preHandle_returnsTrue_whenAllGatesAreEnabled() throws Exception {
+    EndpointGateInterceptor interceptor = buildInterceptor();
+    EndpointGate annotation = mock(EndpointGate.class);
+    when(annotation.value()).thenReturn(new String[] {"gate-a", "gate-b"});
+    HandlerMethod handlerMethod = handlerMethodWithAnnotation(annotation);
+    when(provider.isGateEnabled("gate-a")).thenReturn(true);
+    when(provider.isGateEnabled("gate-b")).thenReturn(true);
+
+    boolean result = interceptor.preHandle(request, response, handlerMethod);
+
+    assertTrue(result);
+  }
+
+  @Test
+  void preHandle_throwsException_whenSecondGateIsDenied() {
+    EndpointGateInterceptor interceptor = buildInterceptor();
+    EndpointGate annotation = mock(EndpointGate.class);
+    when(annotation.value()).thenReturn(new String[] {"gate-a", "gate-b"});
+    HandlerMethod handlerMethod = handlerMethodWithAnnotation(annotation);
+    when(provider.isGateEnabled("gate-a")).thenReturn(true);
+    when(provider.isGateEnabled("gate-b")).thenReturn(false);
+
+    assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
+        .isInstanceOf(EndpointGateAccessDeniedException.class);
+  }
+
+  @Test
+  void preHandle_throwsException_whenFirstGateIsDenied() {
+    EndpointGateInterceptor interceptor = buildInterceptor();
+    EndpointGate annotation = mock(EndpointGate.class);
+    when(annotation.value()).thenReturn(new String[] {"gate-a", "gate-b"});
+    HandlerMethod handlerMethod = handlerMethodWithAnnotation(annotation);
+    when(provider.isGateEnabled("gate-a")).thenReturn(false);
+
+    assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
+        .isInstanceOf(EndpointGateAccessDeniedException.class);
   }
 
   // --- checkSchedule ---
@@ -117,14 +171,14 @@ class EndpointGateInterceptorTest {
   // --- validateAnnotation ---
 
   @Test
-  void preHandle_throwsIllegalStateException_whenEndpointGateValueIsEmpty() {
+  void preHandle_throwsIllegalArgumentException_whenEndpointGateValueIsEmpty() {
     EndpointGateInterceptor interceptor = buildInterceptor();
     EndpointGate annotation = endpointGateAnnotation("");
     HandlerMethod handlerMethod = handlerMethodWithAnnotation(annotation);
 
-    assertThatIllegalStateException()
-        .isThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
-        .withMessageContaining("non-empty value");
+    assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or blank");
   }
 
   // --- checkRollout ---

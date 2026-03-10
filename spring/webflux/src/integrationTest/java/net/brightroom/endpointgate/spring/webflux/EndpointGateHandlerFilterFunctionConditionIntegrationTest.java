@@ -13,7 +13,10 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @Import({EndpointGateWebFluxTestAutoConfiguration.class, EndpointGateRouterConfiguration.class})
 @TestPropertySource(
     properties = {
-      "endpoint-gate.gates.conditional-feature.enabled=true",
+      "endpoint-gate.gates.conditional-header-feature.enabled=true",
+      "endpoint-gate.gates.conditional-header-feature.condition=headers['X-Beta'] != null",
+      "endpoint-gate.gates.conditional-param-feature.enabled=true",
+      "endpoint-gate.gates.conditional-param-feature.condition=params['variant'] == 'B'",
     })
 class EndpointGateHandlerFilterFunctionConditionIntegrationTest {
 
@@ -44,7 +47,7 @@ class EndpointGateHandlerFilterFunctionConditionIntegrationTest {
         .json(
             """
             {
-              "detail" : "Gate 'conditional-feature' is not available",
+              "detail" : "Gate 'conditional-header-feature' is not available",
               "instance" : "/functional/condition/header",
               "status" : 403,
               "title" : "Endpoint gate access denied",

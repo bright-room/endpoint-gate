@@ -10,40 +10,34 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
 @Import({EndpointGateMvcTestAutoConfiguration.class, EndpointGateRouterConfiguration.class})
-@TestPropertySource(
-    properties = {
-      "endpoint-gate.gates.conditional-gate.enabled=true",
-      "endpoint-gate.gates.conditional-gate.condition=headers['X-Beta'] != null",
-    })
-class EndpointGateHandlerFilterFunctionConditionIntegrationTest {
+class EndpointGateHandlerFilterFunctionMultipleGatesIntegrationTest {
 
   MockMvc mockMvc;
 
   @Test
-  void shouldAllowAccess_whenHeaderConditionIsSatisfied() throws Exception {
+  void shouldAllowAccess_whenAllGatesAreEnabled() throws Exception {
     mockMvc
-        .perform(get("/functional/condition/header").header("X-Beta", "true"))
+        .perform(get("/functional/multiple-gates/all-enabled"))
         .andExpect(status().isOk())
         .andExpect(content().string("Allowed"));
   }
 
   @Test
-  void shouldBlockAccess_whenHeaderConditionIsNotSatisfied() throws Exception {
+  void shouldBlockAccess_whenOneGateIsDisabled() throws Exception {
     mockMvc
-        .perform(get("/functional/condition/header"))
+        .perform(get("/functional/multiple-gates/one-disabled"))
         .andExpect(status().isForbidden())
         .andExpect(
             content()
                 .json(
                     """
                   {
-                    "detail" : "Gate 'conditional-gate' is not available",
-                    "instance" : "/functional/condition/header",
+                    "detail" : "Gate 'gate-disabled' is not available",
+                    "instance" : "/functional/multiple-gates/one-disabled",
                     "status" : 403,
                     "title" : "Endpoint gate access denied",
                     "type" : "https://github.com/bright-room/endpoint-gate#response-types"
@@ -52,7 +46,7 @@ class EndpointGateHandlerFilterFunctionConditionIntegrationTest {
   }
 
   @Autowired
-  EndpointGateHandlerFilterFunctionConditionIntegrationTest(MockMvc mockMvc) {
+  EndpointGateHandlerFilterFunctionMultipleGatesIntegrationTest(MockMvc mockMvc) {
     this.mockMvc = mockMvc;
   }
 }

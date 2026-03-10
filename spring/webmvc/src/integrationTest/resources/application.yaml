@@ -12,5 +12,11 @@ endpoint-gate:
       enabled: false
     special-endpoint:
       enabled: true
+    gate-a:
+      enabled: true
+    gate-b:
+      enabled: true
+    gate-disabled:
+      enabled: false
   response:
     type: json

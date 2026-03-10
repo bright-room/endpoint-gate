@@ -13,5 +13,11 @@ endpoint-gate:
     remote-address-condition-feature:
       enabled: true
       condition: "remoteAddress == '127.0.0.1'"
+    gate-a:
+      enabled: true
+    gate-b:
+      enabled: true
+    gate-disabled:
+      enabled: false
   response:
     type: json

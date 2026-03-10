@@ -26,4 +26,8 @@ public class FeatureHandler {
   public ServerResponse preview(ServerRequest request) {
     return ServerResponse.ok().body("preview-feature: preview feature for early adopters.");
   }
+
+  public ServerResponse restricted(ServerRequest request) {
+    return ServerResponse.ok().body("restricted: accessible only when all gates are enabled.");
+  }
 }

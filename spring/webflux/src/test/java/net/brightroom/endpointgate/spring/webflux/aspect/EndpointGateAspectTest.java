@@ -90,6 +90,16 @@ class EndpointGateAspectTest {
       return Mono.just("ok");
     }
 
+    @EndpointGate({})
+    public Mono<String> emptyArrayAnnotationMethod() {
+      return Mono.just("ok");
+    }
+
+    @EndpointGate({"gate-a", "gate-b"})
+    public Mono<String> multiGateMonoMethod() {
+      return Mono.just("multi-gate-result");
+    }
+
     @EndpointGate("some-feature")
     public String nonReactiveMethod() {
       return "non-reactive";
@@ -240,7 +250,8 @@ class EndpointGateAspectTest {
   }
 
   @Test
-  void checkEndpointGate_throwsIllegalStateException_whenAnnotationValueIsEmpty() throws Throwable {
+  void checkEndpointGate_throwsIllegalArgumentException_whenAnnotationValueIsEmpty()
+      throws Throwable {
     ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
     MethodSignature signature = mock(MethodSignature.class);
     when(joinPoint.getSignature()).thenReturn(signature);
@@ -250,8 +261,101 @@ class EndpointGateAspectTest {
     when(joinPoint.getTarget()).thenReturn(new TestController());
 
     assertThatThrownBy(() -> aspect.checkEndpointGate(joinPoint))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("non-empty value");
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or blank");
+  }
+
+  @Test
+  void checkEndpointGate_throwsIllegalArgumentException_whenAnnotationValueIsEmptyArray()
+      throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    when(joinPoint.getSignature()).thenReturn(signature);
+
+    Method method = TestController.class.getMethod("emptyArrayAnnotationMethod");
+    when(signature.getMethod()).thenReturn(method);
+    when(joinPoint.getTarget()).thenReturn(new TestController());
+
+    assertThatThrownBy(() -> aspect.checkEndpointGate(joinPoint))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or empty");
+  }
+
+  // --- multipleGates ---
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void checkEndpointGate_returnsMono_whenAllGatesEnabled() throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    when(joinPoint.getSignature()).thenReturn(signature);
+
+    Method method = TestController.class.getMethod("multiGateMonoMethod");
+    when(signature.getMethod()).thenReturn(method);
+    when(signature.getReturnType()).thenReturn(Mono.class);
+    when(joinPoint.getTarget()).thenReturn(new TestController());
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(true));
+    when(provider.isGateEnabled("gate-b")).thenReturn(Mono.just(true));
+    when(joinPoint.proceed()).thenReturn(Mono.just("multi-gate-result"));
+
+    ServerWebExchange exchange = mockExchange();
+    Object result = aspect.checkEndpointGate(joinPoint);
+
+    Mono<String> mono = (Mono<String>) result;
+    StepVerifier.create(mono.contextWrite(ctx -> ctx.put(ServerWebExchange.class, exchange)))
+        .expectNext("multi-gate-result")
+        .verifyComplete();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void checkEndpointGate_returnsMonoError_whenSecondGateDisabled() throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    when(joinPoint.getSignature()).thenReturn(signature);
+
+    Method method = TestController.class.getMethod("multiGateMonoMethod");
+    when(signature.getMethod()).thenReturn(method);
+    when(signature.getReturnType()).thenReturn(Mono.class);
+    when(joinPoint.getTarget()).thenReturn(new TestController());
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(true));
+    when(provider.isGateEnabled("gate-b")).thenReturn(Mono.just(false));
+
+    ServerWebExchange exchange = mockExchange();
+    Object result = aspect.checkEndpointGate(joinPoint);
+
+    StepVerifier.create(
+            ((Mono<?>) result).contextWrite(ctx -> ctx.put(ServerWebExchange.class, exchange)))
+        .expectErrorMatches(
+            e ->
+                e instanceof EndpointGateAccessDeniedException
+                    && ((EndpointGateAccessDeniedException) e).gateId().equals("gate-b"))
+        .verify();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void checkEndpointGate_returnsMonoError_whenFirstGateDisabled() throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    when(joinPoint.getSignature()).thenReturn(signature);
+
+    Method method = TestController.class.getMethod("multiGateMonoMethod");
+    when(signature.getMethod()).thenReturn(method);
+    when(signature.getReturnType()).thenReturn(Mono.class);
+    when(joinPoint.getTarget()).thenReturn(new TestController());
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(false));
+
+    ServerWebExchange exchange = mockExchange();
+    Object result = aspect.checkEndpointGate(joinPoint);
+
+    StepVerifier.create(
+            ((Mono<?>) result).contextWrite(ctx -> ctx.put(ServerWebExchange.class, exchange)))
+        .expectErrorMatches(
+            e ->
+                e instanceof EndpointGateAccessDeniedException
+                    && ((EndpointGateAccessDeniedException) e).gateId().equals("gate-a"))
+        .verify();
   }
 
   @Test

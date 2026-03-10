@@ -68,7 +68,7 @@ public class EndpointGateRouterConfiguration {
   RouterFunction<ServerResponse> functionalConditionRoute() {
     return route()
         .GET("/functional/condition/header", req -> ServerResponse.ok().bodyValue("Allowed"))
-        .filter(endpointGateFilter.of("conditional-feature", "headers['X-Beta'] != null"))
+        .filter(endpointGateFilter.of("conditional-header-feature"))
         .build();
   }
 
@@ -76,7 +76,27 @@ public class EndpointGateRouterConfiguration {
   RouterFunction<ServerResponse> functionalConditionParamRoute() {
     return route()
         .GET("/functional/condition/param", req -> ServerResponse.ok().bodyValue("Allowed"))
-        .filter(endpointGateFilter.of("conditional-feature", "params['variant'] == 'B'"))
+        .filter(endpointGateFilter.of("conditional-param-feature"))
+        .build();
+  }
+
+  @Bean
+  RouterFunction<ServerResponse> functionalMultipleGatesAllEnabledRoute() {
+    return route()
+        .GET(
+            "/functional/multiple-gates/all-enabled",
+            req -> ServerResponse.ok().bodyValue("Allowed"))
+        .filter(endpointGateFilter.of("gate-a", "gate-b"))
+        .build();
+  }
+
+  @Bean
+  RouterFunction<ServerResponse> functionalMultipleGatesOneDisabledRoute() {
+    return route()
+        .GET(
+            "/functional/multiple-gates/one-disabled",
+            req -> ServerResponse.ok().bodyValue("Not Allowed"))
+        .filter(endpointGateFilter.of("gate-a", "gate-disabled"))
         .build();
   }
 
