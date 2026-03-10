@@ -40,4 +40,20 @@ public class RoutingConfiguration {
         .filter(endpointGateFilter.of("experimental-api"))
         .build();
   }
+
+  @Bean
+  RouterFunction<ServerResponse> internalRoute(FeatureHandler handler) {
+    return route()
+        .GET("/api/internal", handler::internal)
+        .filter(endpointGateFilter.of("internal-api", "headers['X-Internal'] == 'true'"))
+        .build();
+  }
+
+  @Bean
+  RouterFunction<ServerResponse> previewRoute(FeatureHandler handler) {
+    return route()
+        .GET("/api/preview", handler::preview)
+        .filter(endpointGateFilter.of("preview-feature", "params['preview'] == 'true'", 30))
+        .build();
+  }
 }
