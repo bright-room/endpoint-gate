@@ -53,6 +53,7 @@ include(
     "examples:webflux:fail-behavior",
     "examples:webflux:error-handling",
     "examples:webflux:custom-provider",
+    "examples:webflux:custom-provider-database",
     "examples:webflux:actuator-endpoint",
     "examples:webflux:health-indicator",
     "examples:webflux:basic-usage",
