@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @TestPropertySource(
     properties = {
       "endpoint-gate.gates.conditional-gate.enabled=true",
+      "endpoint-gate.gates.conditional-gate.condition=headers['X-Beta'] != null",
     })
 class EndpointGateHandlerFilterFunctionConditionIntegrationTest {
 

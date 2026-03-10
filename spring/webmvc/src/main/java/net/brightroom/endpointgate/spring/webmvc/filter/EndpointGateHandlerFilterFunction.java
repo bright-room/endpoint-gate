@@ -5,6 +5,7 @@ import net.brightroom.endpointgate.core.evaluation.EndpointGateEvaluationPipelin
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
 import net.brightroom.endpointgate.core.provider.ConditionProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
+import net.brightroom.endpointgate.core.validation.GateIdValidator;
 import net.brightroom.endpointgate.spring.webmvc.condition.HttpServletConditionVariables;
 import net.brightroom.endpointgate.spring.webmvc.context.EndpointGateContextResolver;
 import net.brightroom.endpointgate.spring.webmvc.resolution.handlerfilter.AccessDeniedHandlerFilterResolution;
@@ -38,9 +39,6 @@ import org.springframework.web.servlet.function.ServerResponse;
  * to build the denied response without invoking the handler. The default response format follows
  * {@code endpoint-gate.response.type} configuration, and can be customized by providing a custom
  * {@link AccessDeniedHandlerFilterResolution} bean.
- *
- * <p>Use {@link #withRolloutFallback(String, int)} to enable gradual rollout for functional
- * endpoints with a fallback rollout percentage.
  */
 public class EndpointGateHandlerFilterFunction {
 
@@ -64,7 +62,7 @@ public class EndpointGateHandlerFilterFunction {
    *     elements
    */
   public HandlerFilterFunction<ServerResponse, ServerResponse> of(String... gateIds) {
-    validateGateIds(gateIds);
+    GateIdValidator.validateGateIds(gateIds);
     return (request, next) -> {
       for (String gateId : gateIds) {
         String condition = conditionProvider.getCondition(gateId).orElse("");
@@ -83,128 +81,6 @@ public class EndpointGateHandlerFilterFunction {
       }
       return next.handle(request);
     };
-  }
-
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified endpoint gate
-   * and fallback condition expression.
-   *
-   * <p>The condition is resolved from the provider first; the {@code conditionFallback} is used
-   * only when the provider returns no value for the gate.
-   *
-   * @param gateId the identifier of the endpoint gate to check; must not be null or blank
-   * @param conditionFallback SpEL expression used as fallback when the provider has no condition
-   *     configured; empty string means no condition
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the endpoint gate
-   *     and condition
-   * @throws IllegalArgumentException if {@code gateId} is null or blank
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withConditionFallback(
-      String gateId, String conditionFallback) {
-    return withFallbacks(gateId, conditionFallback, 100);
-  }
-
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified endpoint gate
-   * and fallback rollout percentage.
-   *
-   * <p>The rollout percentage is resolved from the provider first; the {@code rolloutFallback} is
-   * used only when the provider returns no value for the gate.
-   *
-   * @param gateId the identifier of the endpoint gate to check; must not be null or blank
-   * @param rolloutFallback the fallback rollout percentage (0–100) when no value is configured in
-   *     the provider; 100 means fully enabled
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the endpoint gate
-   *     and rollout
-   * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
-   *     rolloutFallback} is not between 0 and 100
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withRolloutFallback(
-      String gateId, int rolloutFallback) {
-    return withFallbacks(gateId, "", rolloutFallback);
-  }
-
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified endpoint gate,
-   * fallback SpEL condition expression, and fallback rollout percentage.
-   *
-   * <p>The condition and rollout percentage are resolved from their respective providers first;
-   * fallback values are used only when the providers return no value for the gate.
-   *
-   * <p>The evaluation order is: gate enabled check → schedule check → condition check → rollout
-   * check.
-   *
-   * @param gateId the identifier of the endpoint gate to check; must not be null or blank
-   * @param conditionFallback SpEL expression used as fallback when the provider has no condition
-   *     configured; empty string means no condition
-   * @param rolloutFallback the fallback rollout percentage (0–100) when no value is configured in
-   *     the provider; 100 means fully enabled
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the endpoint
-   *     gate, condition, and rollout
-   * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
-   *     rolloutFallback} is not between 0 and 100
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withFallbacks(
-      String gateId, String conditionFallback, int rolloutFallback) {
-    if (gateId == null) {
-      throw new IllegalArgumentException(
-          "gateId must not be null or blank. "
-              + "A blank value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (gateId.isBlank()) {
-      throw new IllegalArgumentException(
-          "gateId must not be null or blank. "
-              + "A blank value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (rolloutFallback < 0) {
-      throw new IllegalArgumentException(
-          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
-    }
-    if (rolloutFallback > 100) {
-      throw new IllegalArgumentException(
-          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
-    }
-    return (request, next) -> {
-      String condition = conditionProvider.getCondition(gateId).orElse(conditionFallback);
-      int rollout = rolloutPercentageProvider.getRolloutPercentage(gateId).orElse(rolloutFallback);
-      EvaluationContext context =
-          new EvaluationContext(
-              gateId,
-              condition,
-              rollout,
-              HttpServletConditionVariables.build(request.servletRequest()),
-              () -> contextResolver.resolve(request.servletRequest()).orElse(null));
-      AccessDecision decision = pipeline.evaluate(context);
-      if (decision instanceof AccessDecision.Denied denied) {
-        return resolution.resolve(request, denied.toException());
-      }
-      return next.handle(request);
-    };
-  }
-
-  private void validateGateIds(String[] gateIds) {
-    if (gateIds == null) {
-      throw new IllegalArgumentException(
-          "gateIds must not be null or empty. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (gateIds.length == 0) {
-      throw new IllegalArgumentException(
-          "gateIds must not be null or empty. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    for (String gateId : gateIds) {
-      if (gateId == null) {
-        throw new IllegalArgumentException(
-            "gateId must not be null or blank. "
-                + "A blank value causes fail-open behavior and allows access unconditionally.");
-      }
-      if (gateId.isBlank()) {
-        throw new IllegalArgumentException(
-            "gateId must not be null or blank. "
-                + "A blank value causes fail-open behavior and allows access unconditionally.");
-      }
-    }
   }
 
   /**

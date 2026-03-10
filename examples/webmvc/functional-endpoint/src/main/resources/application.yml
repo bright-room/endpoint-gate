@@ -9,5 +9,8 @@ endpoint-gate:
       enabled: false
     internal-api:
       enabled: true
+      condition: "headers['X-Internal'] == 'true'"
     preview-feature:
       enabled: true
+      condition: "params['preview'] == 'true'"
+      rollout: 30

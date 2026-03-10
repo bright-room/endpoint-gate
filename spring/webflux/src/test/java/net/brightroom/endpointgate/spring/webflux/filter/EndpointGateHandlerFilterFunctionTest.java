@@ -124,6 +124,13 @@ class EndpointGateHandlerFilterFunctionTest {
   // --- validation ---
 
   @Test
+  void of_throwsIllegalArgumentException_whenGateIdsIsEmptyArray() {
+    assertThatThrownBy(() -> filterFunction.of(new String[] {}))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or empty");
+  }
+
+  @Test
   void of_throwsIllegalArgumentException_whenGateIdIsNull() {
     assertThatThrownBy(() -> filterFunction.of((String) null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -135,20 +142,6 @@ class EndpointGateHandlerFilterFunctionTest {
     assertThatThrownBy(() -> filterFunction.of(""))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("null or blank");
-  }
-
-  @Test
-  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsNegative() {
-    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", -1))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("rollout must be between 0 and 100");
-  }
-
-  @Test
-  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsOver100() {
-    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", 101))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("rollout must be between 0 and 100");
   }
 
   // --- enabled check ---
@@ -247,6 +240,8 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToNext_whenConditionPasses() {
     when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
+    when(conditionProvider.getCondition("my-gate"))
+        .thenReturn(Mono.just("headers['X-Beta'] != null"));
     ServerHttpRequest httpRequest = mockHttpRequest();
     ServerRequest request = mockRequest(httpRequest);
 
@@ -257,8 +252,7 @@ class EndpointGateHandlerFilterFunctionTest {
     ServerResponse okResponse = mock(ServerResponse.class);
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
-    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter = filterFunction.of("my-gate");
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);
@@ -269,6 +263,8 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToResolution_whenConditionFails() {
     when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
+    when(conditionProvider.getCondition("my-gate"))
+        .thenReturn(Mono.just("headers['X-Beta'] != null"));
     ServerHttpRequest httpRequest = mockHttpRequest();
     ServerRequest request = mockRequest(httpRequest);
 
@@ -280,34 +276,66 @@ class EndpointGateHandlerFilterFunctionTest {
     when(resolution.resolve(eq(request), any(EndpointGateAccessDeniedException.class)))
         .thenReturn(Mono.just(deniedResponse));
 
-    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter = filterFunction.of("my-gate");
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
     verifyNoInteractions(next);
     verify(resolution).resolve(eq(request), any(EndpointGateAccessDeniedException.class));
   }
 
+  // --- multiple gates (AND semantics) ---
+
   @Test
   @SuppressWarnings("unchecked")
-  void of_evaluatesConditionBeforeRollout() {
-    when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
-    ServerHttpRequest httpRequest = mockHttpRequest();
-    ServerRequest request = mockRequest(httpRequest);
+  void of_delegatesToNext_whenAllGatesEnabled() {
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(true));
+    when(provider.isGateEnabled("gate-b")).thenReturn(Mono.just(true));
+    ServerRequest request = mockRequest();
+    HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
+    ServerResponse okResponse = mock(ServerResponse.class);
+    when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
-    when(conditionEvaluator.evaluate(eq("headers['X-Beta'] != null"), any()))
-        .thenReturn(Mono.just(false));
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
+        filterFunction.of("gate-a", "gate-b");
+    StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
+    verify(next).handle(request);
+    verifyNoInteractions(resolution);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void of_delegatesToResolution_whenSecondGateDisabled() {
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(true));
+    when(provider.isGateEnabled("gate-b")).thenReturn(Mono.just(false));
+    ServerRequest request = mockRequest();
     HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
     ServerResponse deniedResponse = mock(ServerResponse.class);
     when(resolution.resolve(eq(request), any(EndpointGateAccessDeniedException.class)))
         .thenReturn(Mono.just(deniedResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withFallbacks("my-gate", "headers['X-Beta'] != null", 50);
+        filterFunction.of("gate-a", "gate-b");
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
-    verifyNoInteractions(rolloutStrategy);
+    verifyNoInteractions(next);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void of_delegatesToResolution_whenFirstGateDisabled() {
+    when(provider.isGateEnabled("gate-a")).thenReturn(Mono.just(false));
+    ServerRequest request = mockRequest();
+    HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
+    ServerResponse deniedResponse = mock(ServerResponse.class);
+    when(resolution.resolve(eq(request), any(EndpointGateAccessDeniedException.class)))
+        .thenReturn(Mono.just(deniedResponse));
+
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
+        filterFunction.of("gate-a", "gate-b");
+    StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
+
+    verifyNoInteractions(next);
   }
 
   // --- rollout check ---
@@ -316,6 +344,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToNext_whenRolloutCheckPasses() {
     when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(Mono.just(50));
     ServerHttpRequest httpRequest = mockHttpRequest();
     EndpointGateContext context = new EndpointGateContext("u1");
     when(contextResolver.resolve(httpRequest)).thenReturn(Mono.just(context));
@@ -328,7 +357,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);
@@ -339,6 +368,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToResolution_whenRolloutCheckFails() {
     when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(Mono.just(50));
     ServerHttpRequest httpRequest = mockHttpRequest();
     EndpointGateContext context = new EndpointGateContext("u1");
     when(contextResolver.resolve(httpRequest)).thenReturn(Mono.just(context));
@@ -352,7 +382,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(Mono.just(deniedResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     StepVerifier.create(filter.filter(request, next)).expectNext(deniedResponse).verifyComplete();
 
     verifyNoInteractions(next);
@@ -363,6 +393,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToNext_whenContextIsEmpty() {
     when(provider.isGateEnabled("my-gate")).thenReturn(Mono.just(true));
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(Mono.just(50));
     ServerRequest request = mockRequest();
 
     HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
@@ -370,7 +401,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(Mono.just(okResponse));
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     StepVerifier.create(filter.filter(request, next)).expectNext(okResponse).verifyComplete();
 
     verify(next).handle(request);

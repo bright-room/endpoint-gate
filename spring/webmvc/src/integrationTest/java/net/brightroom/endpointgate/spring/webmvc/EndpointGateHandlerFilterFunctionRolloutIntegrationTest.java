@@ -29,17 +29,13 @@ import org.springframework.web.servlet.function.ServerResponse;
  *   <li>Custom {@link EndpointGateContextResolver} bean is respected via
  *       {@code @ConditionalOnMissingBean}, enabling sticky rollout.
  *   <li>Rollout decision is deterministic for a fixed user identifier.
- *   <li>{@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)} correctly
- *       applies rollout control via {@code ServerRequest.servletRequest()} in the MVC pipeline.
- *   <li>{@link EndpointGateHandlerFilterFunction#withRolloutFallback(String, int)} uses the {@code
- *       rolloutFallback} argument when {@code rollout} is not configured in YAML.
+ *   <li>Rollout percentage is resolved from YAML configuration via the provider.
  * </ul>
  */
 @WebMvcTest(
     properties = {
       "endpoint-gate.gates.rollout-gate.enabled=true",
       "endpoint-gate.gates.rollout-gate.rollout=50",
-      "endpoint-gate.gates.no-rollout-gate.enabled=true"
     })
 @Import({
   EndpointGateMvcTestAutoConfiguration.class,
@@ -67,16 +63,7 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         EndpointGateHandlerFilterFunction endpointGateFilter) {
       return route()
           .GET("/functional/rollout-test", req -> ServerResponse.ok().body("Allowed"))
-          .filter(endpointGateFilter.withRolloutFallback("rollout-gate", 50))
-          .build();
-    }
-
-    @Bean
-    RouterFunction<ServerResponse> functionalRolloutFallbackTestRoute(
-        EndpointGateHandlerFilterFunction endpointGateFilter) {
-      return route()
-          .GET("/functional/rollout-fallback-test", req -> ServerResponse.ok().body("Allowed"))
-          .filter(endpointGateFilter.withRolloutFallback("no-rollout-gate", 0))
+          .filter(endpointGateFilter.of("rollout-gate"))
           .build();
     }
   }
@@ -115,14 +102,5 @@ class EndpointGateHandlerFilterFunctionRolloutIntegrationTest {
         .perform(MockMvcRequestBuilders.get("/functional/rollout-test"))
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.content().string("Allowed"));
-  }
-
-  @Test
-  void rolloutFallback_isApplied_whenRolloutNotConfiguredInYaml() throws Exception {
-    // no-rollout-gate has no rollout configured in YAML; of("no-rollout-gate", 0) uses 0 as
-    // fallback, meaning no requests are allowed.
-    mockMvc
-        .perform(MockMvcRequestBuilders.get("/functional/rollout-fallback-test"))
-        .andExpect(MockMvcResultMatchers.status().isForbidden());
   }
 }

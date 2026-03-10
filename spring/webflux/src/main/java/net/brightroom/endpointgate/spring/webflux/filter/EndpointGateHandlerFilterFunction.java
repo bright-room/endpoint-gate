@@ -1,7 +1,9 @@
 package net.brightroom.endpointgate.spring.webflux.filter;
 
+import java.util.Optional;
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
+import net.brightroom.endpointgate.core.validation.GateIdValidator;
 import net.brightroom.endpointgate.reactive.core.evaluation.ReactiveEndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
@@ -9,6 +11,7 @@ import net.brightroom.endpointgate.spring.webflux.condition.ServerHttpConditionV
 import net.brightroom.endpointgate.spring.webflux.context.ReactiveEndpointGateContextResolver;
 import net.brightroom.endpointgate.spring.webflux.resolution.handlerfilter.AccessDeniedHandlerFilterResolution;
 import org.springframework.web.reactive.function.server.HandlerFilterFunction;
+import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -40,9 +43,6 @@ import reactor.core.publisher.Mono;
  * to build the denied response without invoking the handler. The default response format follows
  * {@code endpoint-gate.response.type} configuration, and can be customized by providing a custom
  * {@link AccessDeniedHandlerFilterResolution} bean.
- *
- * <p>Use {@link #withRolloutFallback(String, int)} to enable gradual rollout for functional
- * endpoints with a fallback rollout percentage.
  */
 public class EndpointGateHandlerFilterFunction {
 
@@ -66,7 +66,7 @@ public class EndpointGateHandlerFilterFunction {
    *     elements
    */
   public HandlerFilterFunction<ServerResponse, ServerResponse> of(String... gateIds) {
-    validateGateIds(gateIds);
+    GateIdValidator.validateGateIds(gateIds);
     return (request, next) ->
         Flux.fromArray(gateIds)
             .concatMap(gateId -> evaluateSingleGate(request, gateId))
@@ -82,124 +82,14 @@ public class EndpointGateHandlerFilterFunction {
                 });
   }
 
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified gate and
-   * fallback condition expression.
-   *
-   * <p>The condition is resolved from the provider first; the {@code conditionFallback} is used
-   * only when the provider returns no value for the gate.
-   *
-   * @param gateId the identifier of the gate to check; must not be null or blank
-   * @param conditionFallback SpEL expression used as fallback when the provider has no condition
-   *     configured; empty string means no condition
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the gate and
-   *     condition
-   * @throws IllegalArgumentException if {@code gateId} is null or blank
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withConditionFallback(
-      String gateId, String conditionFallback) {
-    return withFallbacks(gateId, conditionFallback, 100);
-  }
-
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified gate and
-   * fallback rollout percentage.
-   *
-   * <p>The rollout percentage is resolved from the provider first; the {@code rolloutFallback} is
-   * used only when the provider returns no value for the gate.
-   *
-   * @param gateId the identifier of the gate to check; must not be null or blank
-   * @param rolloutFallback the fallback rollout percentage (0–100) when no value is configured in
-   *     the provider; 100 means fully enabled
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the gate and
-   *     rollout
-   * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
-   *     rolloutFallback} is not between 0 and 100
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withRolloutFallback(
-      String gateId, int rolloutFallback) {
-    return withFallbacks(gateId, "", rolloutFallback);
-  }
-
-  /**
-   * Creates a {@link HandlerFilterFunction} that guards the route with the specified gate, fallback
-   * SpEL condition expression, and fallback rollout percentage.
-   *
-   * <p>The condition and rollout percentage are resolved from their respective providers first;
-   * fallback values are used only when the providers return no value for the gate.
-   *
-   * <p>The evaluation order is: gate enabled check → schedule check → condition check → rollout
-   * check.
-   *
-   * @param gateId the identifier of the gate to check; must not be null or blank
-   * @param conditionFallback SpEL expression used as fallback when the provider has no condition
-   *     configured; empty string means no condition
-   * @param rolloutFallback the fallback rollout percentage (0–100) when no value is configured in
-   *     the provider; 100 means fully enabled
-   * @return a {@link HandlerFilterFunction} that allows or denies access based on the gate,
-   *     condition, and rollout
-   * @throws IllegalArgumentException if {@code gateId} is null or blank, or if {@code
-   *     rolloutFallback} is not between 0 and 100
-   */
-  public HandlerFilterFunction<ServerResponse, ServerResponse> withFallbacks(
-      String gateId, String conditionFallback, int rolloutFallback) {
-    if (gateId == null) {
-      throw new IllegalArgumentException(
-          "gateId must not be null or blank. "
-              + "A blank value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (gateId.isBlank()) {
-      throw new IllegalArgumentException(
-          "gateId must not be null or blank. "
-              + "A blank value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (rolloutFallback < 0) {
-      throw new IllegalArgumentException(
-          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
-    }
-    if (rolloutFallback > 100) {
-      throw new IllegalArgumentException(
-          String.format("rollout must be between 0 and 100, but was: %d", rolloutFallback));
-    }
-    return (request, next) ->
-        Mono.zip(
-                conditionProvider.getCondition(gateId).defaultIfEmpty(conditionFallback),
-                rolloutPercentageProvider
-                    .getRolloutPercentage(gateId)
-                    .defaultIfEmpty(rolloutFallback),
-                contextResolver
-                    .resolve(request.exchange().getRequest())
-                    .map(java.util.Optional::of)
-                    .defaultIfEmpty(java.util.Optional.empty()))
-            .flatMap(
-                tuple -> {
-                  EvaluationContext evalCtx =
-                      new EvaluationContext(
-                          gateId,
-                          tuple.getT1(),
-                          tuple.getT2(),
-                          ServerHttpConditionVariables.build(request.exchange().getRequest()),
-                          () -> tuple.getT3().orElse(null));
-                  return pipeline.evaluate(evalCtx);
-                })
-            .flatMap(
-                decision -> {
-                  if (decision instanceof AccessDecision.Denied denied) {
-                    return resolution.resolve(request, denied.toException());
-                  }
-                  return next.handle(request);
-                });
-  }
-
-  private Mono<AccessDecision> evaluateSingleGate(
-      org.springframework.web.reactive.function.server.ServerRequest request, String gateId) {
+  private Mono<AccessDecision> evaluateSingleGate(ServerRequest request, String gateId) {
     return Mono.zip(
             conditionProvider.getCondition(gateId).defaultIfEmpty(""),
             rolloutPercentageProvider.getRolloutPercentage(gateId).defaultIfEmpty(100),
             contextResolver
                 .resolve(request.exchange().getRequest())
-                .map(java.util.Optional::of)
-                .defaultIfEmpty(java.util.Optional.empty()))
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty()))
         .flatMap(
             tuple -> {
               EvaluationContext evalCtx =
@@ -211,31 +101,6 @@ public class EndpointGateHandlerFilterFunction {
                       () -> tuple.getT3().orElse(null));
               return pipeline.evaluate(evalCtx);
             });
-  }
-
-  private void validateGateIds(String[] gateIds) {
-    if (gateIds == null) {
-      throw new IllegalArgumentException(
-          "gateIds must not be null or empty. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    if (gateIds.length == 0) {
-      throw new IllegalArgumentException(
-          "gateIds must not be null or empty. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    for (String gateId : gateIds) {
-      if (gateId == null) {
-        throw new IllegalArgumentException(
-            "gateId must not be null or blank. "
-                + "A blank value causes fail-open behavior and allows access unconditionally.");
-      }
-      if (gateId.isBlank()) {
-        throw new IllegalArgumentException(
-            "gateId must not be null or blank. "
-                + "A blank value causes fail-open behavior and allows access unconditionally.");
-      }
-    }
   }
 
   /**

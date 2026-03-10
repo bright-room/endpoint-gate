@@ -8,6 +8,7 @@ import net.brightroom.endpointgate.core.evaluation.EndpointGateEvaluationPipelin
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
 import net.brightroom.endpointgate.core.provider.ConditionProvider;
 import net.brightroom.endpointgate.core.provider.RolloutPercentageProvider;
+import net.brightroom.endpointgate.core.validation.GateIdValidator;
 import net.brightroom.endpointgate.spring.webmvc.condition.HttpServletConditionVariables;
 import net.brightroom.endpointgate.spring.webmvc.context.EndpointGateContextResolver;
 import org.jspecify.annotations.NonNull;
@@ -69,7 +70,7 @@ public class EndpointGateInterceptor implements HandlerInterceptor {
     }
 
     String[] gateIds = annotation.value();
-    validateGateIds(gateIds);
+    GateIdValidator.validateGateIds(gateIds);
 
     for (String gateId : gateIds) {
       EvaluationContext context = buildContext(request, gateId);
@@ -87,21 +88,6 @@ public class EndpointGateInterceptor implements HandlerInterceptor {
       return methodAnnotation;
     }
     return handlerMethod.getBeanType().getAnnotation(EndpointGate.class);
-  }
-
-  private void validateGateIds(String[] gateIds) {
-    if (gateIds.length == 0) {
-      throw new IllegalStateException(
-          "@EndpointGate must specify at least one non-empty value. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    for (String gateId : gateIds) {
-      if (gateId.isEmpty()) {
-        throw new IllegalStateException(
-            "@EndpointGate must specify a non-empty value. "
-                + "An empty value causes fail-open behavior and allows access unconditionally.");
-      }
-    }
   }
 
   private EvaluationContext buildContext(HttpServletRequest request, String gateId) {

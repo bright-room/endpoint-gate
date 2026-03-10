@@ -68,9 +68,7 @@ public class EndpointGateRouterConfiguration {
   RouterFunction<ServerResponse> functionalConditionRoute() {
     return route()
         .GET("/functional/condition/header", req -> ServerResponse.ok().bodyValue("Allowed"))
-        .filter(
-            endpointGateFilter.withConditionFallback(
-                "conditional-feature", "headers['X-Beta'] != null"))
+        .filter(endpointGateFilter.of("conditional-header-feature"))
         .build();
   }
 
@@ -78,9 +76,7 @@ public class EndpointGateRouterConfiguration {
   RouterFunction<ServerResponse> functionalConditionParamRoute() {
     return route()
         .GET("/functional/condition/param", req -> ServerResponse.ok().bodyValue("Allowed"))
-        .filter(
-            endpointGateFilter.withConditionFallback(
-                "conditional-feature", "params['variant'] == 'B'"))
+        .filter(endpointGateFilter.of("conditional-param-feature"))
         .build();
   }
 

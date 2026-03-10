@@ -127,6 +127,13 @@ class EndpointGateHandlerFilterFunctionTest {
   }
 
   @Test
+  void of_throwsIllegalArgumentException_whenGateIdsIsEmptyArray() {
+    assertThatThrownBy(() -> filterFunction.of(new String[] {}))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("null or empty");
+  }
+
+  @Test
   void of_throwsIllegalArgumentException_whenGateIdIsNull() {
     assertThatThrownBy(() -> filterFunction.of((String) null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -138,20 +145,6 @@ class EndpointGateHandlerFilterFunctionTest {
     assertThatThrownBy(() -> filterFunction.of(""))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("null or blank");
-  }
-
-  @Test
-  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsNegative() {
-    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", -1))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("rollout must be between 0 and 100");
-  }
-
-  @Test
-  void withRolloutFallback_throwsIllegalArgumentException_whenRolloutIsOver100() {
-    assertThatThrownBy(() -> filterFunction.withRolloutFallback("my-gate", 101))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("rollout must be between 0 and 100");
   }
 
   private void stubServletRequest(ServerRequest serverRequest, HttpServletRequest httpRequest) {
@@ -209,7 +202,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToNext_whenRolloutCheckPasses() throws Exception {
     when(provider.isGateEnabled("my-gate")).thenReturn(true);
-    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.empty());
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.of(50));
 
     HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
     ServerRequest request = mock(ServerRequest.class);
@@ -224,7 +217,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -236,7 +229,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToResolution_whenRolloutCheckFails() throws Exception {
     when(provider.isGateEnabled("my-gate")).thenReturn(true);
-    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.empty());
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.of(50));
 
     HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
     ServerRequest request = mock(ServerRequest.class);
@@ -252,7 +245,7 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(deniedResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);
@@ -264,7 +257,7 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToNext_whenContextIsEmpty() throws Exception {
     when(provider.isGateEnabled("my-gate")).thenReturn(true);
-    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.empty());
+    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.of(50));
 
     HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
     ServerRequest request = mock(ServerRequest.class);
@@ -276,39 +269,12 @@ class EndpointGateHandlerFilterFunctionTest {
     when(next.handle(request)).thenReturn(okResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
+        filterFunctionWithRollout.of("my-gate");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
     verify(next).handle(request);
     verifyNoInteractions(resolution);
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void of_usesProviderRollout_whenProviderReturnsValue() throws Exception {
-    when(provider.isGateEnabled("my-gate")).thenReturn(true);
-    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.of(70));
-
-    HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
-    ServerRequest request = mock(ServerRequest.class);
-    stubServletRequest(request, httpServletRequest);
-
-    EndpointGateContext context = new EndpointGateContext("user-1");
-    when(contextResolver.resolve(httpServletRequest)).thenReturn(Optional.of(context));
-    when(rolloutStrategy.isInRollout("my-gate", context, 70)).thenReturn(true);
-
-    HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
-    ServerResponse okResponse = mock(ServerResponse.class);
-    when(next.handle(request)).thenReturn(okResponse);
-
-    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 50);
-    ServerResponse result = filter.filter(request, next);
-
-    assertThat(result).isEqualTo(okResponse);
-    verify(rolloutStrategy).isInRollout("my-gate", context, 70);
-    verify(next).handle(request);
   }
 
   private void stubServletRequestForConditionVariables(HttpServletRequest httpServletRequest) {
@@ -325,6 +291,8 @@ class EndpointGateHandlerFilterFunctionTest {
   void of_delegatesToNext_whenConditionPasses() throws Exception {
     when(provider.isGateEnabled("my-gate")).thenReturn(true);
     when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.empty());
+    when(conditionProvider.getCondition("my-gate"))
+        .thenReturn(Optional.of("headers['X-Beta'] != null"));
 
     HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
     stubServletRequestForConditionVariables(httpServletRequest);
@@ -339,8 +307,7 @@ class EndpointGateHandlerFilterFunctionTest {
     ServerResponse okResponse = mock(ServerResponse.class);
     when(next.handle(request)).thenReturn(okResponse);
 
-    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter = filterFunction.of("my-gate");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(okResponse);
@@ -352,6 +319,8 @@ class EndpointGateHandlerFilterFunctionTest {
   @SuppressWarnings("unchecked")
   void of_delegatesToResolution_whenConditionFails() throws Exception {
     when(provider.isGateEnabled("my-gate")).thenReturn(true);
+    when(conditionProvider.getCondition("my-gate"))
+        .thenReturn(Optional.of("headers['X-Beta'] != null"));
 
     HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
     stubServletRequestForConditionVariables(httpServletRequest);
@@ -367,8 +336,7 @@ class EndpointGateHandlerFilterFunctionTest {
     when(resolution.resolve(eq(request), any(EndpointGateAccessDeniedException.class)))
         .thenReturn(deniedResponse);
 
-    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunction.withConditionFallback("my-gate", "headers['X-Beta'] != null");
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter = filterFunction.of("my-gate");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);
@@ -398,19 +366,45 @@ class EndpointGateHandlerFilterFunctionTest {
     verifyNoInteractions(conditionEvaluator);
   }
 
+  // --- multiple gates (AND semantics) ---
+
   @Test
   @SuppressWarnings("unchecked")
-  void of_usesFallbackRollout_whenProviderReturnsEmpty() throws Exception {
-    when(provider.isGateEnabled("my-gate")).thenReturn(true);
-    when(rolloutPercentageProvider.getRolloutPercentage("my-gate")).thenReturn(OptionalInt.empty());
+  void of_delegatesToNext_whenAllGatesEnabled() throws Exception {
+    when(provider.isGateEnabled("gate-a")).thenReturn(true);
+    when(provider.isGateEnabled("gate-b")).thenReturn(true);
+    when(rolloutPercentageProvider.getRolloutPercentage("gate-a")).thenReturn(OptionalInt.empty());
+    when(rolloutPercentageProvider.getRolloutPercentage("gate-b")).thenReturn(OptionalInt.empty());
 
-    HttpServletRequest httpServletRequest = mock(HttpServletRequest.class);
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
     ServerRequest request = mock(ServerRequest.class);
-    stubServletRequest(request, httpServletRequest);
+    stubServletRequest(request, httpRequest);
+    when(contextResolver.resolve(httpRequest)).thenReturn(Optional.empty());
 
-    EndpointGateContext context = new EndpointGateContext("user-1");
-    when(contextResolver.resolve(httpServletRequest)).thenReturn(Optional.of(context));
-    when(rolloutStrategy.isInRollout("my-gate", context, 30)).thenReturn(false);
+    HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
+    ServerResponse okResponse = mock(ServerResponse.class);
+    when(next.handle(request)).thenReturn(okResponse);
+
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
+        filterFunction.of("gate-a", "gate-b");
+    ServerResponse result = filter.filter(request, next);
+
+    assertThat(result).isEqualTo(okResponse);
+    verify(next).handle(request);
+    verifyNoInteractions(resolution);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void of_delegatesToResolution_whenSecondGateDisabled() throws Exception {
+    when(provider.isGateEnabled("gate-a")).thenReturn(true);
+    when(provider.isGateEnabled("gate-b")).thenReturn(false);
+    when(rolloutPercentageProvider.getRolloutPercentage("gate-a")).thenReturn(OptionalInt.empty());
+
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    ServerRequest request = mock(ServerRequest.class);
+    stubServletRequest(request, httpRequest);
+    when(contextResolver.resolve(httpRequest)).thenReturn(Optional.empty());
 
     HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
     ServerResponse deniedResponse = mock(ServerResponse.class);
@@ -418,11 +412,33 @@ class EndpointGateHandlerFilterFunctionTest {
         .thenReturn(deniedResponse);
 
     HandlerFilterFunction<ServerResponse, ServerResponse> filter =
-        filterFunctionWithRollout.withRolloutFallback("my-gate", 30);
+        filterFunction.of("gate-a", "gate-b");
     ServerResponse result = filter.filter(request, next);
 
     assertThat(result).isEqualTo(deniedResponse);
-    verify(rolloutStrategy).isInRollout("my-gate", context, 30);
+    verifyNoInteractions(next);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void of_delegatesToResolution_whenFirstGateDisabled() throws Exception {
+    when(provider.isGateEnabled("gate-a")).thenReturn(false);
+
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    ServerRequest request = mock(ServerRequest.class);
+    stubServletRequest(request, httpRequest);
+    when(contextResolver.resolve(httpRequest)).thenReturn(Optional.empty());
+
+    HandlerFunction<ServerResponse> next = mock(HandlerFunction.class);
+    ServerResponse deniedResponse = mock(ServerResponse.class);
+    when(resolution.resolve(eq(request), any(EndpointGateAccessDeniedException.class)))
+        .thenReturn(deniedResponse);
+
+    HandlerFilterFunction<ServerResponse, ServerResponse> filter =
+        filterFunction.of("gate-a", "gate-b");
+    ServerResponse result = filter.filter(request, next);
+
+    assertThat(result).isEqualTo(deniedResponse);
     verifyNoInteractions(next);
   }
 

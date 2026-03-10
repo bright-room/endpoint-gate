@@ -29,7 +29,7 @@ public class RoutingConfiguration {
   RouterFunction<ServerResponse> betaRoute(FeatureHandler handler) {
     return route()
         .GET("/api/beta", handler::beta)
-        .filter(endpointGateFilter.withRolloutFallback("beta-api", 50))
+        .filter(endpointGateFilter.of("beta-api"))
         .build();
   }
 
@@ -45,9 +45,7 @@ public class RoutingConfiguration {
   RouterFunction<ServerResponse> internalRoute(FeatureHandler handler) {
     return route()
         .GET("/api/internal", handler::internal)
-        .filter(
-            endpointGateFilter.withConditionFallback(
-                "internal-api", "headers['X-Internal'] == 'true'"))
+        .filter(endpointGateFilter.of("internal-api"))
         .build();
   }
 
@@ -55,8 +53,7 @@ public class RoutingConfiguration {
   RouterFunction<ServerResponse> previewRoute(FeatureHandler handler) {
     return route()
         .GET("/api/preview", handler::preview)
-        .filter(
-            endpointGateFilter.withFallbacks("preview-feature", "params['preview'] == 'true'", 30))
+        .filter(endpointGateFilter.of("preview-feature"))
         .build();
   }
 

@@ -1,9 +1,11 @@
 package net.brightroom.endpointgate.spring.webflux.aspect;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 import net.brightroom.endpointgate.core.annotation.EndpointGate;
 import net.brightroom.endpointgate.core.evaluation.AccessDecision;
 import net.brightroom.endpointgate.core.evaluation.EvaluationContext;
+import net.brightroom.endpointgate.core.validation.GateIdValidator;
 import net.brightroom.endpointgate.reactive.core.evaluation.ReactiveEndpointGateEvaluationPipeline;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveConditionProvider;
 import net.brightroom.endpointgate.reactive.core.provider.ReactiveRolloutPercentageProvider;
@@ -62,7 +64,7 @@ public class EndpointGateAspect {
     }
 
     String[] gateIds = annotation.value();
-    validateGateIds(gateIds);
+    GateIdValidator.validateGateIds(gateIds);
 
     Class<?> returnType = ((MethodSignature) joinPoint.getSignature()).getReturnType();
 
@@ -113,8 +115,8 @@ public class EndpointGateAspect {
             rolloutPercentageProvider.getRolloutPercentage(gateId).defaultIfEmpty(100),
             contextResolver
                 .resolve(exchange.getRequest())
-                .map(java.util.Optional::of)
-                .defaultIfEmpty(java.util.Optional.empty()))
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty()))
         .flatMap(
             tuple -> {
               EvaluationContext evalCtx =
@@ -156,21 +158,6 @@ public class EndpointGateAspect {
       return methodAnnotation;
     }
     return AnnotationUtils.findAnnotation(joinPoint.getTarget().getClass(), EndpointGate.class);
-  }
-
-  private void validateGateIds(String[] gateIds) {
-    if (gateIds.length == 0) {
-      throw new IllegalStateException(
-          "@EndpointGate must specify at least one non-empty value. "
-              + "An empty value causes fail-open behavior and allows access unconditionally.");
-    }
-    for (String gateId : gateIds) {
-      if (gateId.isEmpty()) {
-        throw new IllegalStateException(
-            "@EndpointGate must specify a non-empty value. "
-                + "An empty value causes fail-open behavior and allows access unconditionally.");
-      }
-    }
   }
 
   /**
