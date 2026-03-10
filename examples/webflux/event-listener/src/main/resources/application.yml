@@ -1,0 +1,10 @@
+endpoint-gate:
+  gates:
+    demo-feature:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: endpoint-gates,health

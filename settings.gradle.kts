@@ -58,6 +58,7 @@ include(
     "examples:webflux:basic-usage",
     "examples:webflux:functional-endpoint",
     "examples:webflux:rollout",
+    "examples:webflux:event-listener",
     "examples:webflux:custom-rollout-strategy",
     "examples:webflux:schedule",
 )
