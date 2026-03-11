@@ -12,7 +12,7 @@ argument-hint: "<markdown-file-path> [--branch <branch-name>]"
 
 - 引数 `$ARGUMENTS` に Markdown ファイルのパスが指定されていること（必須）
 - `gh` CLI が認証済みであること（PR 作成時）
-- コーディングガイドライン `.claude/guidelines/coding.md` に準拠すること
+- コーディングガイドライン `.claude/rules/coding.md` に準拠すること
 
 ## 引数
 
@@ -51,7 +51,7 @@ ARGUMENTS = "$ARGUMENTS"
 
 ### 3. コーディングガイドラインの読み込み
 
-`.claude/guidelines/coding.md` を読み込み、ガイドラインの内容を把握する。以降のコード実装はすべてこのガイドラインに準拠すること。
+`.claude/rules/coding.md` を読み込み、ガイドラインの内容を把握する。以降のコード実装はすべてこのガイドラインに準拠すること。
 
 ### 4. ブランチの準備
 
@@ -92,7 +92,7 @@ Markdown の内容に基づいてコードを実装する。
 
 #### 実装時の注意事項
 
-- `.claude/guidelines/coding.md` のコーディングガイドラインに厳密に準拠すること
+- `.claude/rules/coding.md` のコーディングガイドラインに厳密に準拠すること
 - 既存のコードベースのパターン・命名規則に従うこと
 - `CLAUDE.md` に記載されたアーキテクチャとモジュール構成を遵守すること
 - 実装プランがある場合は Phase / Step の順序に従って段階的に実装すること
