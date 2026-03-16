@@ -37,6 +37,16 @@ For full architecture details (modules, dependency graph, request flow, extensio
 
 コード実装時は @.claude/rules/coding.md を参照し、ガイドラインに準拠したコードを書くこと。
 
+## Custom Skills
+
+- `/plan <issue-number>` — GitHub Issue を参照して実装プランを作成する。ローカルではファイル出力、CI 環境では Issue コメントとして投稿
+- `/implement <markdown-file-path> [--branch <branch-name>]` — 実装プランに基づいてコードを実装する。新規実装時は main からブランチを切り PR を作成、既存ブランチ指定時はそのブランチ上で修正・Push
+- `/review [base-branch]` — 現在のブランチの変更に対するコードレビューを実施し、構造化された Markdown レポートとして出力
+
+### Shared Skills
+
+`.claude/skills/shared/` 配下のスキルは [claude-skills](https://github.com/bright-room/claude-skills) リポジトリからサブモジュール経由で提供される。利用可能なスキルの一覧は同リポジトリの README を参照。
+
 ## Contributing
 
 PRs target `main`. PR titles should be prefixed with `Close #<IssueNumber>` when resolving an issue. See @.github/CONTRIBUTING.md for the full workflow.
