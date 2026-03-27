@@ -1,16 +1,15 @@
 ---
 name: implement
-description: 指定された Markdown（実装プラン等）を読み込み、内容に基づいてコードを実装する。新規実装時は main からブランチを切り PR を作成し、既存ブランチ指定時はそのブランチ上で修正・Push を行う。
-argument-hint: "<markdown-file-path> [--branch <branch-name>]"
+description: 指定された Markdown（実装プラン等）を読み込み、内容に基づいてコードを実装する。ファイルパスで実装ソースを指定する。
+argument-hint: "[markdown-file-path] [--branch <branch-name>]"
 ---
 
 # Implement Skill
 
-指定された Markdown ファイル（実装プラン、レビュー指摘など）を読み込み、その内容に基づいてコードを実装する。
+指定された Markdown ファイルを読み込み、その内容に基づいてコードを実装する。
 
 ## 前提条件
 
-- 引数 `$ARGUMENTS` に Markdown ファイルのパスが指定されていること（必須）
 - `gh` CLI が認証済みであること（PR 作成時）
 - コーディングガイドライン `.claude/rules/coding.md` に準拠すること
 
@@ -23,6 +22,8 @@ $ARGUMENTS = <markdown-file-path> [--branch <branch-name>]
 - `<markdown-file-path>`: 実装の元となる Markdown ファイルのパス（必須）
 - `--branch <branch-name>`: 作業ブランチの指定（任意）
 
+引数なしの場合はエラーとする。
+
 ### ブランチの動作
 
 | 引数 | 動作 |
@@ -34,14 +35,11 @@ $ARGUMENTS = <markdown-file-path> [--branch <branch-name>]
 
 ### 1. 引数の解析
 
-```
-ARGUMENTS = "$ARGUMENTS"
-```
-
-- Markdown ファイルパスが指定されていない場合はエラーメッセージを出力して終了すること
 - `--branch` オプションがあればブランチ名を取得する
+- 残りの引数から Markdown ファイルパスを取得する
+- ファイルが存在しない場合はエラーメッセージを出力して終了する
 
-### 2. Markdown ファイルの読み込みと理解
+### 2. 実装ソースの理解
 
 指定された Markdown ファイルを読み込み、内容を深く理解する。
 
@@ -49,42 +47,28 @@ ARGUMENTS = "$ARGUMENTS"
 - **レビュー指摘の場合**: 指摘事項、修正案、対象ファイル・行番号を把握する
 - **その他の Markdown**: 記述された要件・仕様を把握する
 
-### 3. コーディングガイドラインの読み込み
+### 3. プロジェクト構成とガイドラインの読み込み
 
-`.claude/rules/coding.md` を読み込み、ガイドラインの内容を把握する。以降のコード実装はすべてこのガイドラインに準拠すること。
+以下を読み込み、実装の前提知識を把握する:
+
+1. `.claude/rules/coding.md` — コーディングガイドライン
+2. `settings.gradle.kts` — モジュール構成
+3. 対象モジュールの `build.gradle.kts` — 適用されている convention plugin、依存関係、テスト構成（ソースセット）を把握する
+4. `.claude/rules/architecture.md` が存在する場合 — アーキテクチャ上の制約
 
 ### 4. ブランチの準備
 
 #### `--branch` なしの場合（新規実装）
 
-1. `main` ブランチの最新を取得する
-
-```bash
-git fetch origin main
-git checkout main
-git pull origin main
-```
-
-2. Markdown の内容からブランチ名を自動生成する
-   - 実装プランの場合: `feat/<issue-number>-<概要のケバブケース>` の形式
-     - 例: Issue #42 "Add WebFlux support" → `feat/42-add-webflux-support`
-   - レビュー指摘修正の場合: `fix/<issue-number>-<概要のケバブケース>` の形式
-   - その他: `feat/<概要のケバブケース>` の形式
-
-3. ブランチを作成する
-
-```bash
-git checkout -b <branch-name>
-```
+1. `main` ブランチの最新を取得し、そこから新規ブランチを作成する
+2. ブランチ名はソースの内容から自動生成する:
+   - 実装プランの場合: `feat/<issue-number>-<概要のケバブケース>`（例: `feat/42-add-webflux-support`）
+   - レビュー指摘修正の場合: `fix/<issue-number>-<概要のケバブケース>`
+   - その他: `feat/<概要のケバブケース>`
 
 #### `--branch` ありの場合（既存ブランチでの修正）
 
-1. 指定されたブランチにチェックアウトする
-
-```bash
-git checkout <branch-name>
-git pull origin <branch-name>
-```
+指定されたブランチにチェックアウトし、最新を pull する。
 
 ### 5. コードの実装
 
@@ -94,14 +78,22 @@ Markdown の内容に基づいてコードを実装する。
 
 - `.claude/rules/coding.md` のコーディングガイドラインに厳密に準拠すること
 - 既存のコードベースのパターン・命名規則に従うこと
-- `CLAUDE.md` に記載されたアーキテクチャとモジュール構成を遵守すること
+- 変更対象モジュールに最も近い既存実装をリファレンスとし、ディレクトリ構成・クラス設計・テスト構成を踏襲すること
 - 実装プランがある場合は Phase / Step の順序に従って段階的に実装すること
-- 各ステップの実装後、コンパイルエラーがないことを確認すること
+- 各ステップの実装後、対象モジュールのビルドが通ることを確認すること
+
+#### Bean 登録時の確認事項
+
+- ユーザー定義 Bean で上書き可能にすべきか検討し、必要に応じて `@ConditionalOnMissingBean` を適用する（既存の Auto-configuration クラスのパターンを参照）
+- Auto-configuration クラスを追加した場合、`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` への登録を行う
 
 #### 実装の進め方
 
 1. **プロダクトコードの実装**: 新規クラスの作成、既存クラスの修正
-2. **テストコードの実装**: ユニットテスト、統合テストの作成
+2. **テストコードの実装**:
+   - 対象モジュールの `build.gradle.kts` で `integration-test` plugin が適用されている場合、統合テストは `src/integrationTest/java` に配置する
+   - 統合テストのインフラ（テスト用 Controller、Router、テスト用 AutoConfiguration 等）は同ソースセット内に既存のものがあればそのパターンに従う
+   - ユニットテストは `src/test/java` に配置する
 3. **設定ファイルの更新**: Auto-configuration 登録、プロパティメタデータなど
 4. **ドキュメントの更新**: Javadoc、README、CLAUDE.md など（Markdown に記載がある場合）
 
@@ -113,12 +105,17 @@ Markdown の内容に基づいてコードを実装する。
 # Google Java Format の適用
 ./gradlew spotlessApply
 
-# ビルドとテストの実行
-./gradlew build
+# 対象モジュールの部分ビルド（高速なフィードバックループ）
+./gradlew :<module>:test
+./gradlew :<module>:integrationTest  # integration-test plugin 適用モジュールのみ
+
+# 全体ビルド（最終確認）
+./gradlew check
 ```
 
 - `spotlessApply` は必ずコミット前に実行すること
-- `build` が失敗した場合は原因を特定し修正すること。修正後に再度 `build` を実行し、成功するまで繰り返す
+- 部分ビルドで失敗した場合は原因を特定し修正してから全体ビルドに進むこと
+- `check` はユニットテストと統合テストの両方を含む
 
 ### 7. コミット
 
@@ -126,17 +123,18 @@ Markdown の内容に基づいてコードを実装する。
 
 - コミットメッセージは変更内容を適切に要約すること
 - 実装プランの場合は Issue 番号をコミットメッセージに含めること
-  - 例: `Close #42: Add WebFlux support`
+  - 例: `feat: add WebFlux support (#42)`
 - レビュー指摘修正の場合は修正内容を簡潔に記載すること
-  - 例: `Fix review comments: improve error handling and add missing tests`
+  - 例: `fix: improve error handling and add missing tests`
 - 複数の論理的なまとまりがある場合は、適切にコミットを分割すること
+- Co-Authored-By には実行時のモデル情報を使用すること
 
 ```bash
 git add <files>
 git commit -m "$(cat <<'EOF'
 <commit message>
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Co-Authored-By: <実行中のモデル名> <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -151,12 +149,14 @@ EOF
 git push -u origin <branch-name>
 ```
 
-2. PR を作成する
+2. PR を作成する。Issue を紐づける場合は **PR 本文** に `Closes #<issue-number>` を記載する。
 
 ```bash
 gh pr create --title "<PR title>" --body "$(cat <<'EOF'
 ## Summary
 <変更内容の箇条書き>
+
+Closes #<issue-number>
 
 ## Test plan
 <テスト方針のチェックリスト>
@@ -166,19 +166,12 @@ EOF
 )"
 ```
 
-- PR タイトルは Issue を閉じる場合 `Close #<issue-number>: <概要>` の形式にする
 - PR タイトルは 70 文字以内に収めること
-
-3. PR の URL をユーザーに返すこと
+- PR の URL をユーザーに返すこと
 
 #### `--branch` ありの場合（既存ブランチでの修正）
 
 1. リモートに Push する
-
-```bash
-git push origin <branch-name>
-```
-
 2. Push が完了した旨をユーザーに報告すること
 
 ## 注意事項

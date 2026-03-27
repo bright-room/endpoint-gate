@@ -12,32 +12,27 @@
 /implement .claude/outputs/reviews/REVIEW-feat-42-add-webflux-support.md --branch feat/42-add-webflux-support
 ```
 
-### 新規実装（main からブランチを切って PR を作成）
+Markdown ファイルパスの指定が必須。
 
-```
-/implement <markdown-file-path>
-```
+### ブランチの動作
 
-- `main` から新規ブランチを自動作成
-- 実装完了後に PR を作成し、URL を返す
-
-### 既存ブランチでの修正（レビュー指摘対応など）
-
-```
-/implement <markdown-file-path> --branch <branch-name>
-```
-
-- 指定ブランチにチェックアウトして修正を実施
-- 実装完了後に Push する（PR は作成しない）
+| 引数 | 動作 |
+|------|------|
+| `--branch` なし | ソースの内容からブランチ名を自動生成し、`main` から新規ブランチを作成。実装完了後に PR を作成する |
+| `--branch <existing-branch>` | 指定されたブランチにチェックアウトし、そのブランチ上で修正を実施。実装完了後に Push する（PR は作成しない） |
 
 ## 処理の流れ
 
-1. **引数の解析** — Markdown ファイルパスとブランチオプションを取得
-2. **Markdown の読み込み** — 実装プラン・レビュー指摘等の内容を理解
-3. **ガイドラインの読み込み** — `.claude/rules/coding.md` を把握
+1. **引数の解析** — ファイルパスとブランチオプションを取得
+2. **ソースの理解** — Markdown ファイルを読み込み、要件を把握
+3. **プロジェクト構成とガイドラインの読み込み**
+   - `.claude/rules/coding.md` — コーディングガイドライン
+   - `settings.gradle.kts` — モジュール構成
+   - 対象モジュールの `build.gradle.kts` — convention plugin・テスト構成
+   - `.claude/rules/architecture.md` — アーキテクチャ制約
 4. **ブランチの準備** — 新規作成 or 既存ブランチにチェックアウト
-5. **コードの実装** — Markdown の内容に基づいて段階的に実装
-6. **ビルド確認** — `spotlessApply` + `build` の実行
+5. **コードの実装** — ソースの内容に基づいて段階的に実装
+6. **ビルド確認** — `spotlessApply` → モジュール部分ビルド → `check`（全体確認）
 7. **コミット** — 変更内容を適切なメッセージでコミット
 8. **Push / PR 作成** — ブランチモードに応じて Push のみ or PR 作成
 
@@ -48,7 +43,6 @@
 | 実装プランに基づく新規実装 | `/implement .claude/outputs/plans/PLAN-42-xxx.md` |
 | レビュー指摘の修正 | `/implement .claude/outputs/reviews/REVIEW-feat-42-xxx.md --branch feat/42-xxx` |
 | 任意の仕様書に基づく実装 | `/implement docs/spec.md` |
-| 既存ブランチへの追加実装 | `/implement .claude/outputs/plans/PLAN-42-xxx.md --branch feat/42-xxx` |
 
 ## 定義ファイル
 
