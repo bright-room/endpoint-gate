@@ -2,32 +2,65 @@
 
 ## 概要
 
-ブランチの変更差分に対する構造化コードレビューを実施するスキル。
+コードレビューを実施するスキル。ブランチ差分または main 全体のレビューを行い、ローカルファイルとして出力する。
 
 ## 使い方
 
 ```
-/review              # main ブランチとの差分をレビュー
-/review develop      # develop ブランチとの差分をレビュー
+/review                          # feature ブランチ → main との差分レビュー（カテゴリ自動選択）
+                                 # main ブランチ → コードベース全体レビュー（全カテゴリ）
+/review develop                  # develop ブランチとの差分レビュー（カテゴリ自動選択）
+/review --full                   # 差分レビュー（全カテゴリ）
+/review --category security,code # セキュリティとコード品質のみ
+/review --full-codebase          # コードベース全体レビュー（全カテゴリ）
 ```
+
+## レビューモード
+
+| 条件 | モード | レビュー対象 |
+|------|--------|-------------|
+| `--full-codebase` 指定 | コードベース全体レビュー | main ブランチの全コード |
+| feature ブランチ + 引数なし | main との差分レビュー | `main` との差分 |
+| feature ブランチ + ブランチ指定 | 指定ブランチとの差分レビュー | 指定ブランチとの差分 |
+| main ブランチ + 引数なし | コードベース全体レビュー | main ブランチの全コード |
+
+## カテゴリ選択
+
+| 条件 | カテゴリ |
+|------|---------|
+| `--full` 指定 | 全6カテゴリ |
+| `--category` 指定 | 指定されたカテゴリのみ |
+| コードベース全体レビュー | 全6カテゴリ |
+| 差分レビュー（指定なし） | 変更ファイルから自動選択 |
+
+### カテゴリ一覧
+
+| カテゴリ名 | 説明 |
+|-----------|------|
+| `architecture` | 設計パターン・モジュール分割・依存関係・階層整合性 |
+| `code` | ロジック・命名・コーディングガイドライン（CG-*）準拠 |
+| `test` | カバレッジ・網羅性・品質・ソースセット配置 |
+| `security` | 認証・入力バリデーション・CORS・デシリアライゼーション |
+| `docs` | Javadoc・README・設定プロパティの説明 |
+| `build` | Gradle 設定・Auto-configuration 登録・プロパティメタデータ |
+
+### 自動選択の例
+
+| 変更ファイル | 選択されるカテゴリ |
+|-------------|-------------------|
+| `core/src/main/java/.../GateFilter.java` | architecture, code |
+| `spring/webmvc/src/main/java/.../WebMvcConfig.java` | code |
+| `core/src/test/java/.../GateFilterTest.java` | test |
+| `spring/webmvc/src/integrationTest/java/.../IntegrationTest.java` | test |
+| `build.gradle.kts` | build |
+| `README.md` | docs |
 
 ## 出力先
 
-実行環境によって自動的に切り替わる。
-
-| 環境 | 出力先 |
-|------|--------|
-| ローカル | `.claude/outputs/reviews/REVIEW-<branch-name>.md` にファイル出力 |
-| GitHub Actions (`CI=true`) | PR Review API で投稿（サマリはレビュー本文、各指摘はコード行にインラインコメント） |
-
-## レビュー結果の構成
-
-1. **総合評価** — 観点別の星評価マトリクス
-2. **レビューサマリ** — 優先度順の指摘事項一覧表 + チェックボックス付き対応チェックリスト
-3. **アーキテクチャレビュー** — 設計・モジュール分割・依存関係
-4. **プロダクトコードレビュー** — ロジック・命名・コーディング規約
-5. **テストコードレビュー** — カバレッジ・網羅性・品質 + カバレッジマトリクス
-6. **ビルド・設定レビュー** — Gradle・Spring Boot 設定
+| モード | 出力先 |
+|--------|--------|
+| 差分レビュー | `.claude/outputs/reviews/REVIEW-<branch-name>.md` |
+| 全体レビュー | `.claude/outputs/reviews/REVIEW-main-YYYY-MM-DD.md` |
 
 ## 指摘の優先度
 
