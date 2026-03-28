@@ -167,6 +167,7 @@ module/src/main/java/...
 | `.claude/rules/coding.md` | コーディング規約変更 |
 | `<module>/src/main/resources/META-INF/additional-spring-configuration-metadata.json` | 設定プロパティ追加時 |
 | `<module>/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` | Auto-configuration 追加時 |
+| `.claude/skills/references/project-context.md` | モジュール構成変更・ビルドコマンド変更・レビュー観点変更 |
 
 ## ラベル・ワークフロー規約
 
