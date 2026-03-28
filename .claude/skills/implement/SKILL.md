@@ -1,12 +1,15 @@
 ---
 name: implement
-description: 指定された Markdown（実装プラン等）を読み込み、内容に基づいてコードを実装する。ファイルパスで実装ソースを指定する。
-argument-hint: "[markdown-file-path] [--branch <branch-name>]"
+description: Issue 上の実装プラン、PR のレビュー指摘、またはローカル Markdown を元にコードを実装する。Issue 番号、PR 番号、またはファイルパスを指定する。
+argument-hint: "<issue-number> | <pr-number> --pr | <markdown-file-path> [--branch <branch-name>]"
 ---
 
 # Implement Skill
 
-指定された Markdown ファイルを読み込み、その内容に基づいてコードを実装する。
+以下の3つの入力ソースに基づいてコードを実装する:
+- **Issue 番号**: Issue コメント上の実装プラン（`<!-- claude:plan -->` マーカー）を読み取って実装する
+- **PR 番号 + `--pr`**: PR のレビュー指摘（インラインコメント）に対して修正を行う
+- **Markdown ファイルパス**: ローカルの Markdown ファイルを読み込んで実装する
 
 ## 前提条件
 
@@ -16,30 +19,79 @@ argument-hint: "[markdown-file-path] [--branch <branch-name>]"
 ## 引数
 
 ```
-$ARGUMENTS = <markdown-file-path> [--branch <branch-name>]
+$ARGUMENTS = <issue-number> | <pr-number> --pr | <markdown-file-path> [--branch <branch-name>]
 ```
 
-- `<markdown-file-path>`: 実装の元となる Markdown ファイルのパス（必須）
-- `--branch <branch-name>`: 作業ブランチの指定（任意）
+### 入力モードの判定
+
+| 引数パターン | モード | 動作 |
+|-------------|--------|------|
+| 数値のみ（例: `42`） | **Issue プラン実装** | Issue コメントからプランを読み取り実装 |
+| 数値 + `--pr`（例: `15 --pr`） | **PR レビュー指摘対応** | PR のレビュー指摘を読み取り修正 |
+| ファイルパス [+ `--branch`]（例: `plan.md`） | **Markdown 実装** | ローカル Markdown を読み込んで実装 |
 
 引数なしの場合はエラーとする。
 
-### ブランチの動作
-
-| 引数 | 動作 |
-|------|------|
-| `--branch` なし | Markdown の内容からブランチ名を自動生成し、`main` から新規ブランチを作成。実装完了後に PR を作成する |
-| `--branch <existing-branch>` | 指定されたブランチにチェックアウトし、そのブランチ上で修正を実施。実装完了後に Push する（PR は作成しない） |
-
 ## 手順
 
-### 1. 引数の解析
+### 1. 入力ソースの取得
 
-- `--branch` オプションがあればブランチ名を取得する
-- 残りの引数から Markdown ファイルパスを取得する
-- ファイルが存在しない場合はエラーメッセージを出力して終了する
+#### モード A: Issue プラン実装
 
-### 2. 実装ソースの理解
+Issue コメントから `<!-- claude:plan -->` マーカー付きのプランを抽出する。
+
+```bash
+# Issue のコメント一覧からプランコメントを取得
+gh api repos/{owner}/{repo}/issues/<issue-number>/comments \
+  --jq '.[] | select(.body | contains("<!-- claude:plan -->"))'
+```
+
+- プランコメントが見つからない場合はエラーメッセージを出力して終了する
+- 複数のプランコメントが見つかった場合は、最新（最後に投稿された）コメントを採用する
+- プランの Phase / Step の構成、対象ファイル、変更内容を把握する
+
+#### モード B: PR レビュー指摘対応
+
+PR のレビュー指摘（未解決のもの）を取得する。
+
+##### B-1. 未解決のレビュースレッドを取得
+
+```bash
+gh api graphql -f query='
+{
+  repository(owner: "{owner}", name: "{repo}") {
+    pullRequest(number: <pr-number>) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          comments(first: 10) {
+            nodes {
+              body
+              path
+              line
+              diffHunk
+              author { login }
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+- `isResolved: false` のスレッドのみを対象とする
+- bot コメント（CI 等）は除外する
+- 各指摘の `path`, `line`, `diffHunk` から修正箇所を特定する
+- 解釈不能な指摘はスキップし、対応できなかった旨をユーザーに報告する
+
+##### B-2. PR のブランチ情報を取得
+
+```bash
+gh pr view <pr-number> --json headRefName,baseRefName
+```
+
+#### モード C: Markdown 実装
 
 指定された Markdown ファイルを読み込み、内容を深く理解する。
 
@@ -47,7 +99,7 @@ $ARGUMENTS = <markdown-file-path> [--branch <branch-name>]
 - **レビュー指摘の場合**: 指摘事項、修正案、対象ファイル・行番号を把握する
 - **その他の Markdown**: 記述された要件・仕様を把握する
 
-### 3. プロジェクト構成とガイドラインの読み込み
+### 2. プロジェクト構成とガイドラインの読み込み
 
 以下を読み込み、実装の前提知識を把握する:
 
@@ -56,23 +108,33 @@ $ARGUMENTS = <markdown-file-path> [--branch <branch-name>]
 3. 対象モジュールの `build.gradle.kts` — 適用されている convention plugin、依存関係、テスト構成（ソースセット）を把握する
 4. `.claude/rules/architecture.md` が存在する場合 — アーキテクチャ上の制約
 
-### 4. ブランチの準備
+### 3. ブランチの準備
 
-#### `--branch` なしの場合（新規実装）
+#### モード A（Issue プラン実装）: 新規ブランチを作成
 
 1. `main` ブランチの最新を取得し、そこから新規ブランチを作成する
-2. ブランチ名はソースの内容から自動生成する:
-   - 実装プランの場合: `feat/<issue-number>-<概要のケバブケース>`（例: `feat/42-add-webflux-support`）
-   - レビュー指摘修正の場合: `fix/<issue-number>-<概要のケバブケース>`
-   - その他: `feat/<概要のケバブケース>`
+2. ブランチ名: `feat/<issue-number>-<概要のケバブケース>`
+   - 例: `feat/42-add-webflux-support`
 
-#### `--branch` ありの場合（既存ブランチでの修正）
+#### モード B（PR レビュー指摘対応）: PR のブランチにチェックアウト
 
-指定されたブランチにチェックアウトし、最新を pull する。
+PR の `headRefName` にチェックアウトし、最新を pull する。
 
-### 5. コードの実装
+#### モード C（Markdown 実装）: 引数に依存
 
-Markdown の内容に基づいてコードを実装する。
+| 引数 | 動作 |
+|------|------|
+| `--branch` なし | Markdown の内容からブランチ名を自動生成し、`main` から新規ブランチを作成 |
+| `--branch <existing-branch>` | 指定されたブランチにチェックアウトし、最新を pull する |
+
+ブランチ名の自動生成ルール:
+- 実装プランの場合: `feat/<issue-number>-<概要のケバブケース>`
+- レビュー指摘修正の場合: `fix/<issue-number>-<概要のケバブケース>`
+- その他: `feat/<概要のケバブケース>`
+
+### 4. コードの実装
+
+入力ソースの内容に基づいてコードを実装する。
 
 #### 実装時の注意事項
 
@@ -95,9 +157,9 @@ Markdown の内容に基づいてコードを実装する。
    - 統合テストのインフラ（テスト用 Controller、Router、テスト用 AutoConfiguration 等）は同ソースセット内に既存のものがあればそのパターンに従う
    - ユニットテストは `src/test/java` に配置する
 3. **設定ファイルの更新**: Auto-configuration 登録、プロパティメタデータなど
-4. **ドキュメントの更新**: Javadoc、README、CLAUDE.md など（Markdown に記載がある場合）
+4. **ドキュメントの更新**: Javadoc、README、CLAUDE.md など（ソースに記載がある場合）
 
-### 6. ビルドとフォーマットの確認
+### 5. ビルドとフォーマットの確認
 
 実装完了後、以下を実行する:
 
@@ -117,7 +179,7 @@ Markdown の内容に基づいてコードを実装する。
 - 部分ビルドで失敗した場合は原因を特定し修正してから全体ビルドに進むこと
 - `check` はユニットテストと統合テストの両方を含む
 
-### 7. コミット
+### 6. コミット
 
 変更内容をコミットする。
 
@@ -139,9 +201,9 @@ EOF
 )"
 ```
 
-### 8. Push と PR 作成
+### 7. Push と PR 作成
 
-#### `--branch` なしの場合（新規実装）
+#### モード A（Issue プラン実装）: Push して PR 作成
 
 1. リモートに Push する
 
@@ -149,7 +211,7 @@ EOF
 git push -u origin <branch-name>
 ```
 
-2. PR を作成する。Issue を紐づける場合は **PR 本文** に `Closes #<issue-number>` を記載する。
+2. PR を作成する。Issue を紐づけるため **PR 本文** に `Closes #<issue-number>` を記載する。
 
 ```bash
 gh pr create --title "<PR title>" --body "$(cat <<'EOF'
@@ -171,10 +233,7 @@ EOF
 3. Issue に `Type: *` ラベルが付与されている場合、同じラベルを PR にも付与する
 
 ```bash
-# Issue のラベルを取得し、"Type: " で始まるラベルをカンマ区切りで抽出
 LABELS=$(gh issue view <issue-number> --json labels --jq '[.labels[].name | select(startswith("Type: "))] | join(",")')
-
-# ラベルが存在する場合のみ PR に付与
 if [ -n "$LABELS" ]; then
   gh pr edit --add-label "$LABELS"
 fi
@@ -182,14 +241,22 @@ fi
 
 - PR の URL をユーザーに返すこと
 
-#### `--branch` ありの場合（既存ブランチでの修正）
+#### モード B（PR レビュー指摘対応）: Push のみ
 
 1. リモートに Push する
-2. Push が完了した旨をユーザーに報告すること
+2. 対応した指摘と対応できなかった指摘をユーザーに報告すること
+
+#### モード C（Markdown 実装）: 引数に依存
+
+**`--branch` なしの場合（新規実装）:**
+- Push して PR を作成する（モード A と同様のフロー）
+
+**`--branch` ありの場合（既存ブランチでの修正）:**
+- Push のみ行い、完了をユーザーに報告する
 
 ## 注意事項
 
-- Markdown ファイルの内容を正確に理解し、過不足のない実装を行うこと
+- 入力ソースの内容を正確に理解し、過不足のない実装を行うこと
 - 推測ではなく、実際のコードを読んで確認した事実に基づいて実装すること
 - 実装中に不明点や判断が必要な事項があればユーザーに確認すること
 - ビルドが通らない状態でコミット・Push しないこと
