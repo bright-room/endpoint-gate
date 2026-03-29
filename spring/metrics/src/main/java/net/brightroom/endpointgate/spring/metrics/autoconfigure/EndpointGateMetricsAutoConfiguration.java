@@ -28,7 +28,8 @@ import org.springframework.context.annotation.Primary;
 @AutoConfiguration(
     afterName = {
       "net.brightroom.endpointgate.spring.webmvc.autoconfigure.EndpointGateMvcAutoConfiguration",
-      "net.brightroom.endpointgate.spring.webflux.autoconfigure.EndpointGateWebFluxAutoConfiguration"
+      "net.brightroom.endpointgate.spring.webflux.autoconfigure.EndpointGateWebFluxAutoConfiguration",
+      "org.springframework.boot.micrometer.metrics.autoconfigure.CompositeMeterRegistryAutoConfiguration"
     })
 @ConditionalOnBean(MeterRegistry.class)
 public class EndpointGateMetricsAutoConfiguration {

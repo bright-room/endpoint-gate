@@ -1,0 +1,15 @@
+endpoint-gate:
+  gates:
+    enabled-feature:
+      enabled: true
+    disabled-feature:
+      enabled: false
+    rollout-feature:
+      enabled: true
+      rollout: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics

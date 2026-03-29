@@ -52,6 +52,7 @@ include(
     "examples:webmvc:event-listener",
     "examples:webmvc:schedule",
     "examples:webmvc:condition",
+    "examples:webmvc:metrics",
     "examples:webflux:fail-behavior",
     "examples:webflux:error-handling",
     "examples:webflux:custom-provider",
@@ -65,4 +66,5 @@ include(
     "examples:webflux:event-listener",
     "examples:webflux:custom-rollout-strategy",
     "examples:webflux:schedule",
+    "examples:webflux:metrics",
 )
