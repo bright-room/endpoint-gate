@@ -26,4 +26,9 @@ tasks {
         useJUnitPlatform()
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     }
+
+    javadoc {
+        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:all", "-quiet")
+        isFailOnError = true
+    }
 }
