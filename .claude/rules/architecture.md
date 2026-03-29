@@ -16,6 +16,7 @@ This is a multi-module Gradle project (Java 25, Spring Boot 4.x) that provides e
 - **`spring/webmvc` (artifactId: spring-webmvc)** — Spring MVC interceptor implementation. Depends on `spring-core`. Registers `InMemoryEndpointGateProvider` bean via `EndpointGateMvcAutoConfiguration`. Provides `EndpointGateInterceptor`, `EndpointGateHandlerFilterFunction` for functional endpoints, and `EndpointGateExceptionHandler`.
 - **`spring/webflux` (artifactId: spring-webflux)** — Spring WebFlux AOP + HandlerFilterFunction implementation. Depends on `spring-core` + `reactive-core`. Uses `ReactiveEndpointGateProvider` and `EndpointGateAspect` for annotation-based controllers, `EndpointGateHandlerFilterFunction` for functional endpoints.
 - **`spring/actuator` (artifactId: spring-actuator)** — Runtime gate management via Spring Boot Actuator endpoint (`/actuator/endpoint-gates`). Depends on `spring-core` + `reactive-core`. Auto-configuration is split into `ServletConfiguration` and `ReactiveConfiguration` via `@ConditionalOnWebApplication`. Publishes `EndpointGateChangedEvent`/`EndpointGateRemovedEvent` on gate changes. Auto-configured before webmvc/webflux. Health indicator reports `totalGates`/`enabledGates`/`disabledGates`.
+- **`spring/metrics` (artifactId: spring-metrics)** — Micrometer metrics for gate evaluations. Depends on `spring-core` + `reactive-core` + `micrometer-core`. Decorates `EndpointGateEvaluationPipeline` / `ReactiveEndpointGateEvaluationPipeline` with `@Primary` instrumented wrappers that record `endpoint.gate.evaluations` (Counter) and `endpoint.gate.evaluation.duration` (Timer) per evaluation. Auto-configured after webmvc/webflux when `MeterRegistry` is present.
 - **`gradle-scripts`** — Composite build providing convention plugins: `java-conventions`, `spring-boot-starter`, `publish-plugin`, `spotless-java`, `spotless-kotlin`, `integration-test`.
 
 ## Module Dependency Graph
@@ -24,11 +25,13 @@ This is a multi-module Gradle project (Java 25, Spring Boot 4.x) that provides e
 core
 ├── reactive-core
 │   ├── spring-webflux
-│   └── spring-actuator (ReactiveConfiguration)
+│   ├── spring-actuator (ReactiveConfiguration)
+│   └── spring-metrics (ReactiveMetricsConfiguration)
 └── spring-core
     ├── spring-webmvc
     ├── spring-webflux
-    └── spring-actuator
+    ├── spring-actuator
+    └── spring-metrics
 ```
 
 ## Package Structure
@@ -39,6 +42,7 @@ core
 - `net.brightroom.endpointgate.spring.webmvc` — spring-webmvc module
 - `net.brightroom.endpointgate.spring.webflux` — spring-webflux module
 - `net.brightroom.endpointgate.spring.actuator` — spring-actuator module
+- `net.brightroom.endpointgate.spring.metrics` — spring-metrics module
 
 ## Request Flow
 
@@ -67,6 +71,7 @@ All modules use Spring Boot's `META-INF/spring/org.springframework.boot.autoconf
 3. `EndpointGateMvcAutoConfiguration` (spring-webmvc)
 4. `EndpointGateMvcInterceptorRegistrationAutoConfiguration` (spring-webmvc)
 5. `EndpointGateWebFluxAutoConfiguration` (spring-webflux)
+6. `EndpointGateMetricsAutoConfiguration` (spring-metrics) — after webmvc/webflux, requires `MeterRegistry`
 
 ## Response Types
 

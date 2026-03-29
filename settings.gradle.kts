@@ -26,12 +26,14 @@ include(
     "spring:webmvc",
     "spring:webflux",
     "spring:actuator",
+    "spring:metrics",
 )
 
 project(":spring:core").name = "spring-core"
 project(":spring:webmvc").name = "spring-webmvc"
 project(":spring:webflux").name = "spring-webflux"
 project(":spring:actuator").name = "spring-actuator"
+project(":spring:metrics").name = "spring-metrics"
 
 // ###########################################
 // # Example modules
