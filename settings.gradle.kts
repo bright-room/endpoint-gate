@@ -26,12 +26,14 @@ include(
     "spring:webmvc",
     "spring:webflux",
     "spring:actuator",
+    "spring:metrics",
 )
 
 project(":spring:core").name = "spring-core"
 project(":spring:webmvc").name = "spring-webmvc"
 project(":spring:webflux").name = "spring-webflux"
 project(":spring:actuator").name = "spring-actuator"
+project(":spring:metrics").name = "spring-metrics"
 
 // ###########################################
 // # Example modules
@@ -50,6 +52,7 @@ include(
     "examples:webmvc:event-listener",
     "examples:webmvc:schedule",
     "examples:webmvc:condition",
+    "examples:webmvc:metrics",
     "examples:webflux:fail-behavior",
     "examples:webflux:error-handling",
     "examples:webflux:custom-provider",
@@ -63,4 +66,5 @@ include(
     "examples:webflux:event-listener",
     "examples:webflux:custom-rollout-strategy",
     "examples:webflux:schedule",
+    "examples:webflux:metrics",
 )

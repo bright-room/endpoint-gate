@@ -36,6 +36,13 @@ See the [release notes](https://github.com/bright-room/endpoint-gate/releases) f
         <artifactId>spring-actuator</artifactId>
         <version>${version}</version>
     </dependency>
+
+    <!-- Micrometer metrics for gate evaluations (optional) -->
+    <dependency>
+        <groupId>net.bright-room.endpoint-gate</groupId>
+        <artifactId>spring-metrics</artifactId>
+        <version>${version}</version>
+    </dependency>
 </dependencies>
 ```
 
@@ -50,6 +57,9 @@ dependencies {
 
     // Runtime gate management via Actuator (optional)
     implementation 'net.bright-room.endpoint-gate:spring-actuator:${version}'
+
+    // Micrometer metrics for gate evaluations (optional)
+    implementation 'net.bright-room.endpoint-gate:spring-metrics:${version}'
 }
 ```
 
@@ -64,6 +74,9 @@ dependencies {
 
     // Runtime gate management via Actuator (optional)
     implementation("net.bright-room.endpoint-gate:spring-actuator:${version}")
+
+    // Micrometer metrics for gate evaluations (optional)
+    implementation("net.bright-room.endpoint-gate:spring-metrics:${version}")
 }
 ```
 
@@ -694,6 +707,29 @@ class EndpointGateChangeListener {
   }
 }
 ```
+
+## Micrometer Metrics
+
+The `spring-metrics` module records Micrometer metrics for every gate evaluation. Add the dependency and ensure a `MeterRegistry` bean is present (e.g., via `spring-boot-starter-actuator`).
+
+### Recorded Metrics
+
+| Metric | Type | Tags | Description |
+|---|---|---|---|
+| `endpoint.gate.evaluations` | Counter | `gate.id`, `outcome` | Total number of gate evaluations |
+| `endpoint.gate.evaluation.duration` | Timer | `gate.id`, `outcome` | Duration of gate evaluations |
+
+### Outcome Tag Values
+
+| Value | Description |
+|---|---|
+| `allowed` | Access was allowed |
+| `denied.disabled` | Gate is disabled |
+| `denied.schedule_inactive` | Gate schedule is not active |
+| `denied.condition_not_met` | Condition evaluated to false |
+| `denied.rollout_excluded` | Request is outside the rollout bucket |
+
+The module auto-configures when a `MeterRegistry` bean is present. No additional configuration is required.
 
 ## Contributing
 
