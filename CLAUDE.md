@@ -2,7 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
+## Project Overview
+
+**endpoint-gate** is a multi-module Gradle project (Java 25, Spring Boot 4.x) that provides endpoint gate support for Spring MVC and Spring WebFlux applications. Published to Maven Central under group `net.bright-room.endpoint-gate`.
+
+## Development Commands
 
 ```bash
 # Build all modules
@@ -29,13 +33,11 @@ Code formatting uses Google Java Format via Spotless. Always run `spotlessApply`
 
 ## Architecture
 
-Multi-module Gradle project (Java 25, Spring Boot 4.x) for endpoint gate support in Spring MVC / WebFlux. Published to Maven Central under group `net.bright-room.endpoint-gate`.
-
-For full architecture details (modules, dependency graph, request flow, extension points, configuration reference), see @.claude/rules/architecture.md
+For modules, dependency graph, request flow, extension points, and configuration reference, see @.claude/rules/architecture.md
 
 ## Coding Guidelines
 
-コード実装時は @.claude/rules/coding.md を参照し、ガイドラインに準拠したコードを書くこと。
+For coding conventions (CG-1 through CG-9), see @.claude/rules/coding.md
 
 ## Contributing
 
