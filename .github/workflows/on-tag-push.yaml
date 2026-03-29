@@ -1,0 +1,71 @@
+name: on-tag-push
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
+
+  publish:
+    name: Publish to Maven Central
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Publish to maven central with Gradle
+        uses: ./.github/actions/gradle-action
+        env:
+          SONATYPE_CENTRAL_USERNAME: ${{ secrets.SONATYPE_CENTRAL_USERNAME }}
+          SONATYPE_CENTRAL_PASSWORD: ${{ secrets.SONATYPE_CENTRAL_PASSWORD }}
+          PGP_SIGNING_KEY: ${{ secrets.PGP_SIGNING_KEY }}
+          PGP_SIGNING_KEY_PASSPHRASE: ${{ secrets.PGP_SIGNING_KEY_PASSPHRASE }}
+        with:
+          command: sonatypeCentralUpload -PreleaseVersion=${GITHUB_REF_NAME#v} --no-configuration-cache
+
+  close-milestone:
+    name: Close Milestone
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close milestone matching release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          MILESTONE_NUMBER=$(gh api "repos/$REPO/milestones?state=open" \
+            --jq ".[] | select(.title == \"$TAG\") | .number")
+
+          if [ -z "$MILESTONE_NUMBER" ]; then
+            echo "No open milestone found for tag '$TAG'. Skipping."
+            exit 0
+          fi
+
+          gh api -X PATCH "repos/$REPO/milestones/$MILESTONE_NUMBER" \
+            -f state=closed
+
+          echo "Closed milestone '$TAG' (#$MILESTONE_NUMBER)."
