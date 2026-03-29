@@ -17,8 +17,21 @@ jobs:
         with:
           command: spotlessCheck
 
+  javadoc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Javadoc Check
+        uses: ./.github/actions/gradle-action
+        with:
+          command: javadoc
+
   unit-test:
-    needs: lint
+    needs: [lint, javadoc]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -32,7 +45,7 @@ jobs:
           command: test
 
   integration-test:
-    needs: lint
+    needs: [lint, javadoc]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
