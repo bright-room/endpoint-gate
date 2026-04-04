@@ -40,7 +40,7 @@ postgresql-jdbc = { module = "org.postgresql:postgresql" }
 #########################################
 # jackson modules
 #########################################
-jackson-xml = { module = "tools.jackson.dataformat:jackson-dataformat-xml", version = { strictly = "3.1.0" } }
+jackson-xml = { module = "tools.jackson.dataformat:jackson-dataformat-xml", version = { strictly = "3.1.1" } }
 
 #########################################
 # unit test library
