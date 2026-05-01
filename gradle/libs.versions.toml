@@ -52,7 +52,7 @@ assertj-core = { module = "org.assertj:assertj-core", version = { strictly = "3.
 jspecify = { module = "org.jspecify:jspecify", version = { strictly = "1.0.0" } }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
-jsoup = { module = "org.jsoup:jsoup", version = { strictly = "1.22.1" } }
+jsoup = { module = "org.jsoup:jsoup", version = { strictly = "1.22.2" } }
 
 #########################################
 # gradle plugins
