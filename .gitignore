@@ -1,6 +1,46 @@
+# >>> repository-fanout managed >>>
+### JetBrains IDEs ###
+.fleet/
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VSCode ###
+.vscode/
+
+### OS ###
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+### env ###
+.env*
+!.env.example
+
+### AI agents ###
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
+
+### Logfiles ###
+log/*
+!log/.gitkeep
+
+### Tempfiles ###
+.tmp/
+tmp/*
+!tmp/.gitkeep
+
+### Misc ###
 HELP.md
-.gradle
+
+### gradle ###
+.gradle/
 build/
+local.properties
+# <<< repository-fanout managed <<<
+.gradle
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -19,9 +59,6 @@ bin/
 
 ### IntelliJ IDEA ###
 .idea
-*.iws
-*.iml
-*.ipr
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
@@ -34,8 +71,5 @@ out/
 /.nb-gradle/
 
 ### VS Code ###
-.vscode/
 
-### AI agents ###
 /.claude/outputs/
-.claude/settings.local.json
