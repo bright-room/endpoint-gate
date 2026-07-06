@@ -5,6 +5,9 @@
 *.iws
 *.iml
 *.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
 
 ### VSCode ###
 .vscode/
@@ -21,6 +24,8 @@ Thumbs.db
 ### AI agents ###
 .claude/settings.local.json
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+.superpowers/
 CLAUDE.local.md
 
 ### Logfiles ###
@@ -38,12 +43,27 @@ HELP.md
 ### gradle ###
 .gradle/
 build/
-local.properties
-# <<< repository-fanout managed <<<
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+local.properties
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
-out/
+
+### NetBeans ###
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+# <<< repository-fanout managed <<<
